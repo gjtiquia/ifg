@@ -1,63 +1,125 @@
 # [i] [f]or[g]ot cli
 
-a cli tool to help you remember what is the command to do what you are trying to do
+A CLI tool to help you remember commands for tasks you're trying to accomplish.
 
-deadsimple and dumb config as well
+Dead-simple config format with fuzzy search and vim-style modal editing.
 
-would be great to have a quick interactive cli rather than remember dozens of aliases
+## Features
 
-bringing the ux of fzf's ctrl+r and nvim telescope to the shell
+- **Fuzzy search**: Order-agnostic keyword matching across titles, descriptions, and commands
+- **Modal editing**: Insert mode (default) for typing, Normal mode for navigation (vim-style)
+- **Simple config**: Plain text config file with comment-based metadata
+- **Smart sorting**: Results ranked by relevance (command > title > description)
+- **Terminal resize**: Adapts to terminal window changes
 
-## usage
-
-the ux should be very simple to fzf's ctrl+r behavior
-- type `ifg` and enter
-- enters an interactive session where users can type keywords
-- if the user doesnt type any keyword, the user can up/down arrow or "j" "k" to select up and down from a list of all commands
-- if the user types keywords, the cli matches the command / command title / command description and gives a list where user can also select up/down j/k
-- when user presses enter, the command will appear, just like ctrl+r in fzf, for the user to modify it a bit, before pressing enter to execute
-
-## tech stack
-
-go
-
-## installation
+## Installation
 
 ```bash
-
-# prerequisites - have go installed
-go install github.com/gjtiquia/ifg
+# Prerequisites - Go 1.25+ installed
+go install github.com/gjtiquia/ifg@latest
 ```
 
-## config
+## Usage
 
-configuration lives in ~/.ifg/config.sh
-
-the `.sh` extension is simply for convenience of IDE highlighting
-
-an example configuration
+Run `ifg` to enter interactive mode:
 
 ```bash
+ifg
+```
+
+### Insert Mode (default)
+- Type keywords to filter commands
+- `Backspace` - delete character
+- `↑`/`↓` - navigate results
+- `Enter` - select command
+- `Esc` - switch to Normal mode
+- `Ctrl+C` - exit
+
+### Normal Mode
+- `j`/`k` or `↑`/`↓` - navigate results
+- `i`/`I` - switch to Insert mode (cursor at start)
+- `a`/`A` - switch to Insert mode (cursor at end)
+- `Enter` - select command
+- `Esc` or `Ctrl+C` - exit
+
+### Output
+
+When you select a command with `Enter`, it's printed to stdout. You can then copy-paste or use it as needed.
+
+## Configuration
+
+Config location (checked in order):
+1. `$XDG_CONFIG_HOME/ifg/config.sh`
+2. `~/.config/ifg/config.sh` (if XDG_CONFIG_HOME not set)
+3. `~/.ifg/config.sh` (fallback)
+
+If no config exists, a default one is created automatically.
+
+### Format
+
+```bash
+# git commit with message
+# Commits staged changes with a message
+# $ git commit -m "message"
+git commit -m "message"
+
 # copy to clipboard (MacOS)
-# this command copies to clipboard
-# $ echo "hi" | pbcopy
+# Copies text to clipboard
 pbcopy
 
 # paste from clipboard (MacOS)
-# $ pbpaste >> file.txt
+# Pastes clipboard contents
 pbpaste
-
-# copy to clipboard (Linux)
-# $ echo "hi" | xclip sel -clip
-xclip sel -clip
 ```
 
-super straightforward config
-- separated by empty newline
-- first comment line (if any) is title
-- second comment line and subsequent lines are descriptions (if any)
-- last line is the command
-- the keyword search should be simper simple too, searches thru each "entry block" for matches
-- keyword search should be "order-agnostic", eg. typing "macos copy" should match "copy to clipboard (MacOS)"
+**Rules:**
+- Entries separated by blank lines
+- First `#` line = title
+- Subsequent `#` lines = description
+- Lines starting with `# $` = usage examples (part of description)
+- Last non-comment line = command
+- Commands without comments use the command itself as title
+
+### Examples
+
+```bash
+# show running containers
+docker ps
+
+# find large files
+# Lists files > 100M in current directory
+find . -size +100M -type f
+
+# View compact git log
+# One commit per line with graph
+git log --oneline --graph --all
+```
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/gjtiquia/ifg
+cd ifg
+
+# Build
+go build -o ifg
+
+# Run tests
+go test ./...
+
+# Install locally
+go install
+```
+
+## Tech Stack
+
+- **Language**: Go 1.25+
+- **Dependencies**: `golang.org/x/term` (terminal raw mode)
+- **Binary size**: ~2.6MB
+
+## License
+
+MIT
 
 
