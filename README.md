@@ -44,7 +44,33 @@ ifg
 
 ### Output
 
-When you select a command with `Enter`, it's printed to stdout. You can then copy-paste or use it as needed.
+When you select a command with `Enter`, it's printed to stdout.
+
+**With shell integration:** The command is added to your shell history. Press UP to access and edit before executing.
+
+**Without integration:** The command prints to stdout (useful for piping/scripts).
+
+## Shell Integration
+
+To enable history integration (works in bash and zsh):
+
+**Add to `~/.bashrc` or `~/.zshrc`:**
+```bash
+source "$(ifg --sh)"
+```
+
+**How it works:**
+1. Run `ifg` to select a command
+2. Command is added to shell history
+3. Message: "Command: <cmd>" and "Press UP to access"
+4. Press UP to retrieve command from history
+5. Edit if needed, press Enter to execute
+
+**Benefits:**
+- Works in bash, zsh, and other shells with `history -s`
+- No keybinding required
+- UP arrow is universal and intuitive
+- Command can be edited before execution
 
 ## Configuration
 
@@ -112,11 +138,52 @@ go test ./...
 go install
 ```
 
+### Testing Shell Integration
+
+**IMPORTANT:** Shell integration uses history, which works in both interactive and non-interactive shells.
+
+During development, test with the built binary:
+
+```bash
+# Build
+go build -o ifg
+
+# Test flag (works everywhere)
+./ifg --sh     # Outputs shell wrapper
+
+# Test integration (interactive terminal)
+# 1. Add to PATH temporarily
+export PATH="$PWD:$PATH"
+
+# 2. Load wrapper
+source "$(ifg --sh)"
+
+# 3. Test
+ifg
+# Select a command
+# Message: Command: <cmd>
+#          Press UP to access from history
+# Press UP to retrieve command
+
+# 4. Verify history
+history | tail -1
+# Should show the selected command
+
+# Test without integration (no PATH needed)
+./ifg
+# Select command → prints to stdout only
+```
+
+**Note:** Don't use `alias ifg="go run ."` - it won't work properly. The wrapper calls `command ifg` to bypass functions, which still respects aliases and would run `go run .` each time.
+
 ## Tech Stack
 
 - **Language**: Go 1.25+
-- **Dependencies**: `golang.org/x/term` (terminal raw mode)
-- **Binary size**: ~2.6MB
+- **Dependencies**: 
+  - `github.com/gdamore/tcell/v2` - Terminal UI
+  - `golang.org/x/term` - Terminal handling
+  - `golang.org/x/text` - Text processing
+- **Binary size**: ~3.8MB
 
 ## License
 

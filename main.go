@@ -12,30 +12,40 @@ import (
 //go:embed shell/ifg.sh
 var shellWrapper string
 
+func printHelp() {
+	fmt.Println("ifg - interactive command finder")
+	fmt.Println()
+	fmt.Println("Usage: ifg [flags]")
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println("  --sh      Print shell integration code")
+	fmt.Println("  --bash    Alias for --sh (backward compatibility)")
+	fmt.Println("  --zsh     Alias for --sh (backward compatibility)")
+	fmt.Println("  --help    Show this help")
+	fmt.Println()
+	fmt.Println("Shell Integration:")
+	fmt.Println("  Add to ~/.bashrc or ~/.zshrc:")
+	fmt.Println("    source \"$(ifg --sh)\"")
+	fmt.Println()
+	fmt.Println("  Then run 'ifg' to select commands interactively.")
+	fmt.Println("  Selected commands are added to history.")
+	fmt.Println("  Press UP to access and edit before execution.")
+}
+
 func main() {
 	// Check for shell integration flags
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "--sh":
+		case "--sh", "--bash", "--zsh":
 			fmt.Print(shellWrapper)
 			os.Exit(0)
 		case "--help", "-h":
-			fmt.Println("ifg - interactive command finder")
-			fmt.Println()
-			fmt.Println("Usage: ifg [flags]")
-			fmt.Println()
-			fmt.Println("Flags:")
-			fmt.Println("  --sh      Print shell integration code")
-			fmt.Println("  --help    Show this help")
-			fmt.Println()
-			fmt.Println("Shell Integration:")
-			fmt.Println("  Add to ~/.bashrc or ~/.zshrc:")
-			fmt.Println("    source \"$(ifg --sh)\"")
-			fmt.Println()
-			fmt.Println("  Then run 'ifg' to select commands interactively.")
-			fmt.Println("  Selected commands are added to history.")
-			fmt.Println("  Press UP to access and edit before execution.")
+			printHelp()
 			os.Exit(0)
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown flag: %s\n\n", os.Args[1])
+			printHelp()
+			os.Exit(1)
 		}
 	}
 
