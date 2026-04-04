@@ -37,13 +37,13 @@ func Render(state *State, screen tcell.Screen) {
 
 	row := 0
 
-	header := "ifg - [i] [f]or[g]ot that cmd again"
+	header := "ifg - [i] [f]or[g]ot"
 	drawText(screen, 0, row, header, tcell.StyleDefault.Bold(true))
 	row += 2
 
 	prompt := "type to search: "
 	if state.Mode == ModeNormal {
-		prompt = "normal mode: "
+		prompt = "search results for: "
 	}
 
 	// Draw search buffer with cursor (both Insert and Normal modes)

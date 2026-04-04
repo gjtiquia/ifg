@@ -9,7 +9,24 @@ dead-simple config format with fuzzy search
 ## installation
 
 ```bash
-go install github.com/gjtiquia/ifg
+go install github.com/gjtiquia/ifg@latest
+```
+
+troubleshooting:
+
+```bash
+# make sure this is in your .bashrc / .zshrc
+export PATH=$PATH:$HOME/go/bin
+```
+
+other useful commands:
+
+```bash
+# installs binary at current directory instead of a global install
+GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
+
+# run this to check what is latest available version
+go list -m github.com/gjtiquia/ifg@latest
 ```
 
 ### shell integration
