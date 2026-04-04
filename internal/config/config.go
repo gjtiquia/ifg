@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+var defaultConfig string
+
+func SetDefaultConfig(content string) {
+	defaultConfig = content
+}
+
 type Entry struct {
 	Title       string
 	Description []string
@@ -105,50 +111,13 @@ func CreateDefaultConfig(path string) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	defaultContent := `# copy to clipboard (MacOS)
-# copies text to clipboard
-pbcopy
-
-# paste from clipboard (MacOS)
-# pastes clipboard contents
-pbpaste
-
-# copy to clipboard (Linux)
-# copies text to clipboard
-xclip -selection clipboard
-
-# git status short
-# shows concise git status
-git status -s
-
-# git log oneline
-# shows one commit per line
-git log --oneline
-
-# git branch list
-# lists all branches
-git branch -a
-
-# docker ps
-# lists running containers
-docker ps
-
-# docker images
-# lists all images
-docker images
-
-# find large files
-# lists files > 100M in current directory
-find . -size +100M -type f
-`
-
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("failed to create default config: %w", err)
 	}
 	defer file.Close()
 
-	if _, err := file.WriteString(defaultContent); err != nil {
+	if _, err := file.WriteString(defaultConfig); err != nil {
 		return fmt.Errorf("failed to write default config: %w", err)
 	}
 

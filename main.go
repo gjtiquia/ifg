@@ -12,6 +12,9 @@ import (
 //go:embed shell/ifg.sh
 var shellWrapper string
 
+//go:embed shell/config.sh
+var defaultConfigContent string
+
 func printHelp() {
 	fmt.Println("ifg - interactive command finder")
 	fmt.Println()
@@ -36,12 +39,15 @@ func main() {
 	// Check for shell integration flags
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+
 		case "--sh", "--bash", "--zsh":
 			fmt.Print(shellWrapper)
 			os.Exit(0)
+
 		case "--help", "-h":
 			printHelp()
 			os.Exit(0)
+
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown flag: %s\n\n", os.Args[1])
 			printHelp()
@@ -49,6 +55,7 @@ func main() {
 		}
 	}
 
+	config.SetDefaultConfig(defaultConfigContent)
 	configPath := config.GetConfigPath()
 
 	var entries []config.Entry
