@@ -12,21 +12,23 @@ dead-simple config format with fuzzy search
 go install github.com/gjtiquia/ifg@latest
 ```
 
-troubleshooting:
+<details>
+    <summary>Command 'ifg' not found</summary>
 
 ```bash
 # make sure this is in your .bashrc / .zshrc
 export PATH=$PATH:$HOME/go/bin
 ```
+</details>
 
 other useful commands:
 
 ```bash
-# installs binary at current directory instead of a global install
-GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
-
 # run this to check what is latest available version
 go list -m github.com/gjtiquia/ifg@latest
+
+# installs binary at current directory instead of a global install
+GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
 ```
 
 ### shell integration
