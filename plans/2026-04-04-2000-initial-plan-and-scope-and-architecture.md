@@ -35,7 +35,10 @@ ifg/
 
 ### 1. Config Parser (`internal/config/config.go`)
 
-**Config file location:** `~/.ifg/config.sh`
+**Config file location:**
+- Primary: `$XDG_CONFIG_HOME/ifg/config.sh` (or `~/.config/ifg/config.sh` if XDG_CONFIG_HOME not set)
+- Fallback: `~/.ifg/config.sh`
+- Check XDG location first, fall back to `~/.ifg/` if not found
 
 **Entry struct:**
 ```go
@@ -234,6 +237,7 @@ search: macos copy
 3. Implement `internal/config/config.go`:
    - `Entry` struct
    - `LoadConfig(path string) ([]Entry, error)`
+   - `GetConfigPath() string` - returns XDG path or fallback
    - `CreateDefaultConfig(path string) error`
 4. Write tests for config parsing
 
