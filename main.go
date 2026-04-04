@@ -18,6 +18,8 @@ var defaultConfigContent string
 func printHelp() {
 	fmt.Println("# ifg - [i] [f]or[g]ot")
 	fmt.Println()
+	fmt.Println("for when you are trying to rmb that command")
+	fmt.Println()
 	fmt.Println("## usage:")
 	fmt.Println()
 	fmt.Println("  ifg [flags]")
