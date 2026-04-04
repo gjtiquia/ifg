@@ -30,13 +30,13 @@ ifg
 
 ## config
 
-location:
+### config location
 - if `XDG_CONFIG_HOME` is set: `$XDG_CONFIG_HOME/ifg/config.sh`
 - if `XDG_CONFIG_HOME` is not set: `~/.ifg/config.sh`
 
 if no config exists, a default one will be created on first running `ifg`
 
-### format
+### config format
 
 ```bash
 # an optional title
