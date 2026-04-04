@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 
@@ -8,7 +9,36 @@ import (
 	"github.com/gjtiquia/ifg/internal/ui"
 )
 
+//go:embed shell/ifg.sh
+var shellWrapper string
+
 func main() {
+	// Check for shell integration flags
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--sh":
+			fmt.Print(shellWrapper)
+			os.Exit(0)
+		case "--help", "-h":
+			fmt.Println("ifg - interactive command finder")
+			fmt.Println()
+			fmt.Println("Usage: ifg [flags]")
+			fmt.Println()
+			fmt.Println("Flags:")
+			fmt.Println("  --sh      Print shell integration code")
+			fmt.Println("  --help    Show this help")
+			fmt.Println()
+			fmt.Println("Shell Integration:")
+			fmt.Println("  Add to ~/.bashrc or ~/.zshrc:")
+			fmt.Println("    source \"$(ifg --sh)\"")
+			fmt.Println()
+			fmt.Println("  Then run 'ifg' to select commands interactively.")
+			fmt.Println("  Selected commands are added to history.")
+			fmt.Println("  Press UP to access and edit before execution.")
+			os.Exit(0)
+		}
+	}
+
 	configPath := config.GetConfigPath()
 
 	var entries []config.Entry

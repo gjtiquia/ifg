@@ -1,92 +1,162 @@
-# Shell Integration with Embedded Scripts
+# Shell Integration with History Approach
 
 ## Overview
 
-Add `--bash` and `--zsh` flags that output shell wrapper code. Wrapper scripts are embedded in the binary using Go's `embed` package.
+Simplified shell integration using `history -s` instead of READLINE_LINE. When a command is selected, it's added to shell history and printed to stdout. The user can then press UP to access and edit it.
+
+This approach is simpler, more portable, and works in ALL shells (bash, zsh, fish, etc.).
+
+---
+
+## Why History Instead of READLINE_LINE?
+
+### The READLINE_LINE Problem
+
+`READLINE_LINE` (bash) and `BUFFER` (zsh) **only work with `bind -x`**, not direct function calls:
+
+```bash
+# This DOESN'T work - READLINE_LINE has no effect
+ifg() {
+    local cmd=$(command ifg)
+    READLINE_LINE="$cmd"
+}
+ifg
+
+# This WORKS - but requires keybinding
+bind -x '"\C-g": ifg-widget'
+# User must press Ctrl+G, cannot type `ifg`
+```
+
+**The key insight:** READLINE_LINE only works when the function is bound to a key with `bind -x`. It does NOT work when called as a regular command.
+
+### The History Solution
+
+`history -s` adds a command to shell history, accessible via UP arrow:
+
+```bash
+# Works in bash, zsh, fish, etc.
+ifg() {
+    local cmd=$(command ifg)
+    [[ -n "$cmd" ]] && history -s "$cmd"
+}
+```
+
+**Advantages:**
+- ✅ Works in ALL shells (bash, zsh, fish)
+- ✅ No keybinding required - user types `ifg`
+- ✅ UP arrow is universal muscle memory
+- ✅ Command is editable before execution
+- ✅ Simple - no interactive checks, no bind -x
+- ✅ Still pipeable: `cmd=$(ifg)`
+
+**Disadvantage:**
+- Requires UP arrow (one extra keypress) vs direct readline injection
+
+**Trade-off is worth it** - one UP arrow for massive simplification and portability.
 
 ---
 
 ## Implementation
 
-### 1. Create Shell Wrapper Files
+### 1. Create Unified Shell Wrapper
 
-**File: `shell/ifg.bash`**
+**File: `shell/ifg.sh`**
+
+Single wrapper that works in bash AND zsh:
+
 ```bash
 # ifg - interactive command finder
-# Source this file or run: eval "$(ifg --bash)"
+# Add to ~/.bashrc OR ~/.zshrc:
+#   source "$(ifg --sh)"
+# Or:
+#   eval "$(ifg --sh)"
 
 ifg() {
     local cmd=$(command ifg)
     if [[ -n "$cmd" ]]; then
-        READLINE_LINE="$cmd"
-        READLINE_POINT=${#READLINE_LINE}
+        history -s "$cmd"
+        echo "Command: $cmd"
+        echo "Press UP to access from history"
     fi
 }
 ```
 
-**File: `shell/ifg.zsh`**
-```zsh
-# ifg - interactive command finder
-# Source this file or run: eval "$(ifg --zsh)"
-
-ifg() {
-    local cmd=$(command ifg)
-    if [[ -n "$cmd" ]]; then
-        BUFFER="$cmd"
-        CURSOR=${#BUFFER}
-    fi
-}
-```
+**Key features:**
+- Single wrapper for bash + zsh (both support `history -s`)
+- Adds command to history with `history -s`
+- Prints command to stdout so user sees it
+- Prints helpful message: "Press UP to access"
+- No interactive checks needed
 
 ### 2. Embed in Go Binary
 
 **File: `main.go`**
 
-Add flag handling:
+Replace `--bash` and `--zsh` with single `--sh` flag:
 
 ```go
-//go:embed shell/ifg.bash
-var bashWrapper string
-
-//go:embed shell/ifg.zsh
-var zshWrapper string
+//go:embed shell/ifg.sh
+var shellWrapper string
 
 func main() {
     // Check for shell integration flags
     if len(os.Args) > 1 {
         switch os.Args[1] {
-        case "--bash":
-            fmt.Print(bashWrapper)
-            os.Exit(0)
-        case "--zsh":
-            fmt.Print(zshWrapper)
+        case "--sh":
+            fmt.Print(shellWrapper)
             os.Exit(0)
         case "--help", "-h":
-            fmt.Println("Usage: ifg [--bash|--zsh]")
-            fmt.Println()
-            fmt.Println("  --bash    Print bash integration code")
-            fmt.Println("  --zsh     Print zsh integration code")
-            fmt.Println()
-            fmt.Println("Add to .bashrc:")
-            fmt.Println("  eval \"$(ifg --bash)\"")
-            fmt.Println()
-            fmt.Println("Add to .zshrc:")
-            fmt.Println("  eval \"$(ifg --zsh)\"")
-            os.Exit(0)
+            // ... help text
         }
     }
     
-    // ... rest of main() - current TUI logic
+    // ... existing TUI logic
 }
 ```
 
-**Note:** Need `import "embed"` at top
+### 3. Update Binary Behavior
 
-### 3. Go Module Updates
+**Option:** Should the binary itself print the message?
 
-The `embed` package requires Go 1.16+ (we have Go 1.25). No additional dependencies needed.
+**Current:**
+- Binary prints command to stdout
+- Wrapper adds to history + prints message
 
-The `//go:embed` directive tells Go to embed the files at compile time.
+**Alternative:**
+- Binary prints: `Command: <cmd>\nAdded to history. Press UP to access.`
+- Wrapper simplifies to just: `local cmd=$(command ifg); [[ -n "$cmd" ]] && history -s "$cmd"`
+
+**Decision:** Keep message in wrapper - keeps binary output clean (useful for piping).
+
+---
+
+## User Experience Flow
+
+### With Wrapper Loaded
+
+```bash
+$ ifg
+# User selects "git status -s"
+Command: git status -s
+Press UP to access from history
+
+$ # User presses UP
+$ git status -s  # Command from history, editable
+```
+
+### Without Wrapper (Direct Use)
+
+```bash
+$ ifg
+# User selects "git status -s"
+git status -s  # Just outputs to stdout
+
+$ # User can pipe/capture
+$ cmd=$(ifg)
+# Select command
+$ echo "$cmd"
+git status -s
+```
 
 ---
 
@@ -94,17 +164,20 @@ The `//go:embed` directive tells Go to embed the files at compile time.
 
 ```
 ifg/
-├── main.go              # Updated with --bash/--zsh flags
+├── main.go           # Updated with --sh flag
 ├── internal/
 │   ├── config/
 │   ├── search/
 │   └── ui/
-├── shell/                # NEW
-│   ├── ifg.bash          # Bash wrapper
-│   └── ifg.zsh           # Zsh wrapper
+├── shell/
+│   └── ifg.sh        # Unified wrapper (bash + zsh)
 ├── go.mod
 └── README.md
 ```
+
+**Deletions:**
+- `shell/ifg.bash` - replaced by unified `ifg.sh`
+- `shell/ifg.zsh` - replaced by unified `ifg.sh`
 
 ---
 
@@ -113,198 +186,229 @@ ifg/
 ### Installation
 
 ```bash
-# In .bashrc
-eval "$(ifg --bash)"
+# Bash - add to ~/.bashrc
+source "$(ifg --sh)"
 
-# In .zshrc
-eval "$(ifg --zsh)"
+# Zsh - add to ~/.zshrc
+source "$(ifg --sh)"
+
+# Or manually add:
+# ifg() {
+#     local cmd=$(command ifg)
+#     if [[ -n "$cmd" ]]; then
+#         history -s "$cmd"
+#         echo "Command: $cmd"
+#         echo "Press UP to access from history"
+#     fi
+# }
 ```
 
 ### Running
 
 ```bash
-# Direct (no wrapper) - outputs to stdout
+# With wrapper
 ifg
-# Command prints, user can pipe/copy
+# Select command
+# Output: Command: <cmd>
+#         Press UP to access from history
+# Press UP to get command from history
 
-# With wrapper loaded
-ifg
-# Command appears in readline, ready to edit/execute
+# Without wrapper
+./ifg
+# Select command
+# Output: <cmd>
 ```
 
 ---
 
 ## Advantages
 
-**Why embed instead of generate strings?**
-1. **Easier maintenance** - Edit .sh files with syntax highlighting
-2. **Shell-specific logic** - Complex wrappers are easier to read/write as .sh files
-3. **Single binary** - No external files, works anywhere
-4. **Testability** - Can test shell scripts independently
-5. **Future-proof** - Easy to add Fish, PowerShell, etc.
+### Why History Approach?
 
-**Why shell wrapper?**
-- fzf proven pattern
-- Only way to inject into readline
-- User controls when to enable (via `eval`)
+1. **Universal:** Works in bash, zsh, fish, dash, etc.
+2. **Simple:** No shell-specific logic (READLINE_LINE vs BUFFER)
+3. **No keybinding:** User types `ifg` directly
+4. **No bind -x:** Works without readline magic
+5. **No interactive checks:** Wrappers work everywhere
+6. **Editable:** Command can be edited before execution
+7. **Portable:** One wrapper for all shells
+
+### Why Embed Instead of Generate?
+
+1. **Easier maintenance:** Edit .sh file with syntax highlighting
+2. **Single binary:** No external files
+3. **Testability:** Can test shell script independently
+4. **Future-proof:** Easy to extend
 
 ---
 
 ## Testing
 
+### Unit Test Flags
+
 ```bash
-# Test flag output
+# Test --sh flag
 go build -o ifg
-./ifg --bash
-# Should output bash wrapper code
-
-./ifg --zsh
-# Should output zsh wrapper code
-
-# Test integration
-eval "$(./ifg --bash)"
-# Should define ifg function
-
-type ifg
-# Should show the function definition
-
-# Test full flow (interactive)
-./ifg
-# Select command → should appear in readline (if wrapper loaded)
+./ifg --sh
+# Should output unified wrapper code
 ```
 
----
-
-## Development Testing
-
-During development, use the `go build -o` flow to test shell integration:
-
-### 1. Build and Test Flags
+### Integration Test (Interactive Terminal Required)
 
 ```bash
-# Build binary
+# In an interactive terminal
 go build -o ifg
-
-# Test flags
-./ifg --bash    # Should output bash wrapper code
-./ifg --zsh     # Should output zsh wrapper code
-```
-
-### 2. Test Integration (Bash)
-
-```bash
-# Start clean subshell for testing
-bash
+export PATH="$PWD:$PATH"
 
 # Load wrapper
-eval "$(./ifg --bash)"
-
-# Verify function is defined
-type ifg
-# Should output: ifg is a function
-# ifg () 
-# { 
-#     local cmd=$(command ifg);
-#     if [[ -n "$cmd" ]]; then
-#         READLINE_LINE="$cmd";
-#         READLINE_POINT=${#READLINE_LINE};
-#     fi
-# }
-
-# Test full flow
-ifg
-# Select command with Enter
-# Command should appear in readline, ready to edit/execute
-```
-
-### 3. Test Integration (Zsh)
-
-```bash
-# Start clean subshell for testing
-zsh
-
-# Load wrapper
-eval "$(./ifg --zsh)"
+source "$(ifg --sh)"
 
 # Verify function is defined
 type ifg
 # Should show function definition
 
-# Test full flow
+# Test interactive
 ifg
-# Select command with Enter
-# Command should appear in buffer, ready to edit/execute
+# Select command: "git status"
+# Output: Command: git status
+#         Press UP to access from history
+
+# Press UP arrow
+# Should show: git status
+# Edit and execute
 ```
 
-### 4. Test Without Integration
+### Development Testing
 
 ```bash
-# Run binary directly (no wrapper)
+# Build
+go build -o ifg
+
+# Add to PATH
+export PATH="$PWD:$PATH"
+
+# Test direct invocation (no wrapper)
 ./ifg
-# Select command → should print to stdout
-# NOT injected into readline
+# Prints command to stdout
+
+# Test with wrapper
+source "$(ifg --sh)"
+ifg
+# Select command
+# Command added to history + message printed
 ```
-
-### Why Not `go run .`?
-
-**DON'T use `alias ifg="go run ."`** - it won't work properly with shell integration because:
-
-- Shell wrapper calls `command ifg` to bypass the wrapper function
-- `command` bypasses **functions**, but still respects **aliases**
-- So `command ifg` would still run `go run .`
-- Each invocation would rebuild and restart the Go program
-- Slower and doesn't accurately simulate the real binary
-
-**DO use `go build -o ifg`** for testing:
-
-- Builds once, fast iterations
-- Binary exists on disk for `command ifg` to find
-- Accurately simulates installed binary behavior
 
 ---
 
 ## README Updates
 
-Add to README.md:
-
 ```markdown
 ## Shell Integration
 
-To enable command editing (like fzf's Ctrl+R):
+To use ifg commands directly with history access:
 
-**Bash** - Add to `~/.bashrc`:
+**Bash or Zsh** - Add to `~/.bashrc` or `~/.zshrc`:
 ```bash
-eval "$(ifg --bash)"
+source "$(ifg --sh)"
 ```
 
-**Zsh** - Add to `~/.zshrc`:
-```zsh
-eval "$(ifg --zsh)"
+Now when you run `ifg`:
+1. Select a command
+2. Command is added to shell history
+3. Message: "Command: <cmd>\nPress UP to access"
+4. Press UP to get the command
+5. Edit if needed, press Enter to execute
+
+**Without integration:** `ifg` prints to stdout (useful for scripts).
+
+**For scripts:**
+```bash
+cmd=$(ifg)
+# Select command
+echo "$cmd"
 ```
-
-Now when you run `ifg`, the selected command appears in your prompt for editing before execution.
-
-**Without integration:** `ifg` prints the command to stdout (useful for piping/scripts).
 ```
 
 ---
 
 ## Implementation Steps
 
-1. Create `shell/` directory
-2. Create `shell/ifg.bash` with wrapper
-3. Create `shell/ifg.zsh` with wrapper
-4. Update `main.go`:
-   - Add `embed` import
-   - Add `//go:embed` directives
-   - Add flag parsing before TUI logic
-5. Update README with integration instructions
-6. Build and test
+1. **Delete** `shell/ifg.bash` and `shell/ifg.zsh`
+2. **Create** `shell/ifg.sh` with unified wrapper
+3. **Update** `main.go`:
+   - Remove `bashWrapper` and `zshWrapper` embeds
+   - Add single `shellWrapper` embed for `shell/ifg.sh`
+   - Replace `--bash` and `--zsh` with `--sh`
+   - Update help text
+4. **Update** `README.md` with new integration instructions
+5. **Build and test**
 
-**Time estimate:** 30 minutes
+**Time estimate:** 15-20 minutes
 
 ---
 
-## Questions
+## Questions Answered
 
-None - approach is straightforward. Ready to implement when you give the go-ahead.
+### Why not separate bash/zsh wrappers?
+
+Both bash and zsh support `history -s` identically. No need for separate files.
+
+### What about fish?
+
+Fish also supports history. To support fish, we'd add:
+```fish
+# shell/ifg.fish
+function ifg
+    set cmd (command ifg)
+    if test -n "$cmd"
+        history add "$cmd"
+        echo "Command: $cmd"
+        echo "Press UP to access from history"
+    end
+end
+```
+
+But fish integration is for future - not MVP.
+
+### Should the binary print the message too?
+
+**No** - keep binary output clean. The wrapper prints the message. This keeps `ifg` usable in scripts:
+```bash
+cmd=$(ifg)  # Clean output, no extra messages
+```
+
+### What if user doesn't want history?
+
+They don't load the wrapper:
+```bash
+# Without wrapper - clean stdout output
+ifg
+# Outputs: <cmd>
+
+# Pipe to clipboard
+ifg | xclip -selection clipboard
+```
+
+---
+
+## Success Criteria
+
+1. ✅ Single `--sh` flag (no separate bash/zsh)
+2. ✅ Works in bash and zsh with same wrapper
+3. ✅ Command added to history after selection
+4. ✅ Helpful message printed to user
+5. ✅ Easy to install and use
+6. ✅ Clean separation: binary outputs, wrapper handles history
+7. ✅ Documentation updated
+8. ✅ Simpler than READLINE_LINE approach
+
+---
+
+## Timeline
+
+- **Phase 1:** Replace wrapper files (5 min)
+- **Phase 2:** Update main.go (10 min)
+- **Phase 3:** Update README (5 min)
+- **Phase 4:** Build and test (5 min)
+
+**Total:** 25 minutes
