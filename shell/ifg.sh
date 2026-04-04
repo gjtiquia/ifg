@@ -10,7 +10,11 @@ ifg() {
 
 	local cmd=$(command ifg)
 	if [[ -n "$cmd" ]]; then
-		history -s "$cmd"
+		if [[ -n "$ZSH_VERSION" ]]; then
+			print -s "$cmd"
+		else
+			history -s "$cmd"
+		fi
 		echo "# ifg - [i] [f]or[g]ot"
 		echo ""
 		echo "  $cmd"
