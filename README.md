@@ -29,18 +29,27 @@ ifg
 
 ### Insert Mode (default)
 - Type keywords to filter commands
-- `Backspace` - delete character
+- `Backspace` - delete character before cursor
 - `↑`/`↓` - navigate results
 - `Enter` - select command
 - `Esc` - switch to Normal mode
 - `Ctrl+C` - exit
+- Visual cursor shows current position in search buffer
 
 ### Normal Mode
 - `j`/`k` or `↑`/`↓` - navigate results
+- `h`/`l` - move cursor left/right in search buffer
+- `w`/`W` - next word/WORD start in search buffer
+- `b`/`B` - previous word/WORD start in search buffer
+- `e`/`E` - word/WORD end in search buffer
 - `i`/`I` - switch to Insert mode (cursor at start)
 - `a`/`A` - switch to Insert mode (cursor at end)
 - `Enter` - select command
 - `Esc` or `Ctrl+C` - exit
+
+**Word vs WORD:**
+- **word:** Alphanumeric characters (`[a-zA-Z0-9_]`)
+- **WORD:** Non-whitespace characters (delimited by whitespace)
 
 ### Output
 

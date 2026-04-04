@@ -86,11 +86,15 @@ func (s *State) SwitchToNormal() {
 
 func (s *State) SwitchToInsert(cursorPos string) {
 	s.Mode = ModeInsert
-	if cursorPos == "start" {
-		s.CursorIdx = 0
-	} else if cursorPos == "end" {
-		s.CursorIdx = len(s.SearchBuf)
+	// 'i/I': Insert BEFORE cursor - keep cursor at current position
+	// 'a/A': Insert AFTER cursor - move cursor right by one
+	if cursorPos == "end" {
+		// Move cursor right to insert after current position
+		if s.CursorIdx < len(s.SearchBuf) {
+			s.CursorIdx++
+		}
 	}
+	// If "start", keep CursorIdx as-is (insert before current position)
 }
 
 func (s *State) GetSelectedCommand() string {
@@ -98,4 +102,130 @@ func (s *State) GetSelectedCommand() string {
 		return s.Filtered[s.SelectedIdx].Command
 	}
 	return ""
+}
+
+func (s *State) MoveCursorLeft() {
+	if s.CursorIdx > 0 {
+		s.CursorIdx--
+	}
+}
+
+func (s *State) MoveCursorRight() {
+	if s.CursorIdx < len(s.SearchBuf) {
+		s.CursorIdx++
+	}
+}
+
+func (s *State) MoveWordForward() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	for i < len(buf) && isWordChar(buf[i]) {
+		i++
+	}
+
+	for i < len(buf) && !isWordChar(buf[i]) {
+		i++
+	}
+
+	s.CursorIdx = i
+}
+
+func (s *State) MoveWORDForward() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	for i < len(buf) && !isSpace(buf[i]) {
+		i++
+	}
+
+	for i < len(buf) && isSpace(buf[i]) {
+		i++
+	}
+
+	s.CursorIdx = i
+}
+
+func (s *State) MoveWordBackward() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	for i > 0 && !isWordChar(buf[i-1]) {
+		i--
+	}
+
+	for i > 0 && isWordChar(buf[i-1]) {
+		i--
+	}
+
+	s.CursorIdx = i
+}
+
+func (s *State) MoveWORDBackward() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	for i > 0 && isSpace(buf[i-1]) {
+		i--
+	}
+
+	for i > 0 && !isSpace(buf[i-1]) {
+		i--
+	}
+
+	s.CursorIdx = i
+}
+
+func (s *State) MoveWordEnd() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	if i < len(buf) {
+		i++
+	}
+
+	for i < len(buf) && !isWordChar(buf[i]) {
+		i++
+	}
+
+	for i < len(buf) && isWordChar(buf[i]) {
+		i++
+	}
+
+	if i > 0 {
+		s.CursorIdx = i - 1
+	} else {
+		s.CursorIdx = 0
+	}
+}
+
+func (s *State) MoveWORDEnd() {
+	buf := []rune(s.SearchBuf)
+	i := s.CursorIdx
+
+	if i < len(buf) {
+		i++
+	}
+
+	for i < len(buf) && isSpace(buf[i]) {
+		i++
+	}
+
+	for i < len(buf) && !isSpace(buf[i]) {
+		i++
+	}
+
+	if i > 0 {
+		s.CursorIdx = i - 1
+	} else {
+		s.CursorIdx = 0
+	}
+}
+
+func isWordChar(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+}
+
+func isSpace(r rune) bool {
+	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
 }

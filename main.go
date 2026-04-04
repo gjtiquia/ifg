@@ -26,6 +26,8 @@ func printHelp() {
 	fmt.Println("  --zsh     Alias for --sh (backward compatibility)")
 	fmt.Println("  --help    Show this help")
 	fmt.Println()
+	fmt.Printf("Config: %s\n", config.GetConfigPath())
+	fmt.Println()
 	fmt.Println("Shell Integration:")
 	fmt.Println("  Add to ~/.bashrc or ~/.zshrc:")
 	fmt.Println("    source \"$(ifg --sh)\"")
@@ -136,6 +138,22 @@ func runInputLoop(state *ui.State, term *ui.Terminal) string {
 					state.NavigateDown()
 				case 'k':
 					state.NavigateUp()
+				case 'h':
+					state.MoveCursorLeft()
+				case 'l':
+					state.MoveCursorRight()
+				case 'w':
+					state.MoveWordForward()
+				case 'W':
+					state.MoveWORDForward()
+				case 'b':
+					state.MoveWordBackward()
+				case 'B':
+					state.MoveWORDBackward()
+				case 'e':
+					state.MoveWordEnd()
+				case 'E':
+					state.MoveWORDEnd()
 				case 'i', 'I':
 					state.SwitchToInsert("start")
 				case 'a', 'A':

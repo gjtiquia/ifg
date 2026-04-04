@@ -45,7 +45,30 @@ func Render(state *State, screen tcell.Screen) {
 	if state.Mode == ModeNormal {
 		prompt = "normal mode: "
 	}
-	drawText(screen, 0, row, prompt+state.SearchBuf, tcell.StyleDefault)
+
+	// Draw search buffer with cursor (both Insert and Normal modes)
+	if len(state.SearchBuf) > 0 {
+		drawText(screen, 0, row, prompt, tcell.StyleDefault)
+		x := len(prompt)
+
+		for i, ch := range state.SearchBuf {
+			if i == state.CursorIdx {
+				screen.SetContent(x+i, row, ch, nil, tcell.StyleDefault.Reverse(true))
+			} else {
+				screen.SetContent(x+i, row, ch, nil, tcell.StyleDefault)
+			}
+		}
+
+		if state.CursorIdx == len(state.SearchBuf) {
+			screen.SetContent(x+state.CursorIdx, row, ' ', nil, tcell.StyleDefault.Reverse(true))
+		}
+	} else {
+		// Empty buffer
+		drawText(screen, 0, row, prompt, tcell.StyleDefault)
+		if state.Mode == ModeInsert {
+			screen.SetContent(len(prompt), row, ' ', nil, tcell.StyleDefault.Reverse(true))
+		}
+	}
 	row += 2
 
 	drawText(screen, 0, row, "---", tcell.StyleDefault)
