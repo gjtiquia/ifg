@@ -31,11 +31,6 @@ func GetConfigPath() string {
 		return ""
 	}
 
-	xdgPath := filepath.Join(homeDir, ".config", "ifg", "config.sh")
-	if _, err := os.Stat(xdgPath); err == nil {
-		return xdgPath
-	}
-
 	return filepath.Join(homeDir, ".ifg", "config.sh")
 }
 
