@@ -41,9 +41,6 @@ func main() {
 	}
 	defer term.Restore()
 
-	ui.HideCursor()
-	defer ui.ShowCursor()
-
 	width, height, err := term.GetSize()
 	if err != nil {
 		width = 80
@@ -67,13 +64,17 @@ func main() {
 				}
 			} else {
 				term.Restore()
-				ui.ShowCursor()
 				os.Exit(1)
 			}
 		}
 	}()
 
+	ui.EnterAlternateScreen()
+	defer ui.ExitAlternateScreen()
+
 	selectedCommand := runInputLoop(state, term)
+
+	ui.ExitAlternateScreen()
 
 	if selectedCommand != "" {
 		fmt.Println(selectedCommand)

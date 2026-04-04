@@ -36,6 +36,18 @@ func ClearScreen() {
 	fmt.Print("\x1b[H")
 }
 
+func EnterAlternateScreen() {
+	fmt.Print("\x1b[?1049h")
+	fmt.Print("\x1b[2J")
+	fmt.Print("\x1b[H")
+	HideCursor()
+}
+
+func ExitAlternateScreen() {
+	ShowCursor()
+	fmt.Print("\x1b[?1049l")
+}
+
 func HideCursor() {
 	fmt.Print("\x1b[?25l")
 }
@@ -44,28 +56,28 @@ func ShowCursor() {
 	fmt.Print("\x1b[?25h")
 }
 
-func MoveCursor(row, col int) {
-	fmt.Printf("\x1b[%d;%dH", row, col)
-}
-
 func Render(state *State) {
-	ClearScreen()
+	fmt.Print("\x1b[2J\x1b[H")
 
-	searchPrompt := "search: "
+	fmt.Println("\x1b[1mifg - [i] [f]or[g]ot that cmd again\x1b[0m")
+	fmt.Println()
+
+	prompt := "type to search: "
 	if state.Mode == ModeNormal {
-		searchPrompt = "normal: "
+		prompt = "normal mode: "
 	}
+	fmt.Printf("%s%s\n", prompt, state.SearchBuf)
+	fmt.Println()
 
-	MoveCursor(1, 1)
-	fmt.Printf("\x1b[1m%s\x1b[0m%s", searchPrompt, state.SearchBuf)
+	fmt.Println("---")
+	fmt.Println()
 
 	if len(state.Filtered) == 0 {
-		MoveCursor(3, 1)
-		fmt.Print("\x1b[90mNo results found\x1b[0m")
+		fmt.Println("\x1b[90mNo results found\x1b[0m")
 		return
 	}
 
-	visibleHeight := state.TerminalHeight - 2
+	visibleHeight := state.TerminalHeight - 8
 	if visibleHeight < 1 {
 		visibleHeight = 1
 	}
@@ -74,29 +86,35 @@ func Render(state *State) {
 		entryIdx := i + state.ScrollOffset
 		entry := state.Filtered[entryIdx]
 
-		row := i + 3
-		MoveCursor(row, 1)
-
+		isSelected := entryIdx == state.SelectedIdx
 		prefix := "  "
-		if entryIdx == state.SelectedIdx {
-			prefix = "\x1b[32;1m>\x1b[0m "
+		if isSelected {
+			prefix = "> "
+		}
+
+		if isSelected {
 			fmt.Print("\x1b[1m")
 		}
 
-		if len(entry.Title) > 0 {
-			fmt.Printf("%s%s", prefix, entry.Title)
-		} else {
-			fmt.Printf("%s%s", prefix, entry.Command)
+		if entry.Title != "" {
+			fmt.Printf("%s# %s\n", prefix, entry.Title)
 		}
 
-		if entryIdx == state.SelectedIdx {
+		for _, desc := range entry.Description {
+			fmt.Printf("%s# %s\n", prefix, desc)
+		}
+
+		fmt.Printf("%s%s\n", prefix, entry.Command)
+
+		if isSelected {
 			fmt.Print("\x1b[0m")
 		}
+
+		fmt.Println()
 	}
 
 	if state.ScrollOffset > 0 || state.ScrollOffset+visibleHeight < len(state.Filtered) {
-		MoveCursor(state.TerminalHeight, 1)
-		fmt.Printf("\x1b[90m[%d-%d of %d]\x1b[0m", state.ScrollOffset+1, min(state.ScrollOffset+visibleHeight, len(state.Filtered)), len(state.Filtered))
+		fmt.Printf("\x1b[90m[%d-%d of %d]\x1b[0m\n", state.ScrollOffset+1, min(state.ScrollOffset+visibleHeight, len(state.Filtered)), len(state.Filtered))
 	}
 }
 
@@ -105,10 +123,4 @@ func min(a, b int) int {
 		return a
 	}
 	return b
-}
-
-func RenderCommand(command string) {
-	ClearScreen()
-	MoveCursor(1, 1)
-	fmt.Print(command)
 }
