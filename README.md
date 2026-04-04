@@ -105,3 +105,5 @@ eval "$(ifg --sh)"
 
 MIT
 
+## todos
+- support reading any `.sh` as a valid config - flexibility to .gitignore and separate different configs
