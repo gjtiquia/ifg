@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/gjtiquia/ifg/internal/config"
 	"github.com/gjtiquia/ifg/internal/ui"
@@ -41,40 +39,14 @@ func main() {
 	}
 	defer term.Restore()
 
-	width, height, err := term.GetSize()
-	if err != nil {
-		width = 80
-		height = 24
-	}
-
+	width, height := term.GetSize()
 	state := ui.NewState(entries)
 	state.TerminalWidth = width
 	state.TerminalHeight = height
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGWINCH)
-	go func() {
-		for sig := range sigChan {
-			if sig == syscall.SIGWINCH {
-				width, height, err := term.GetSize()
-				if err == nil {
-					state.TerminalWidth = width
-					state.TerminalHeight = height
-					ui.Render(state)
-				}
-			} else {
-				term.Restore()
-				os.Exit(1)
-			}
-		}
-	}()
-
-	ui.EnterAlternateScreen()
-	defer ui.ExitAlternateScreen()
-
 	selectedCommand := runInputLoop(state, term)
 
-	ui.ExitAlternateScreen()
+	term.Restore()
 
 	if selectedCommand != "" {
 		fmt.Println(selectedCommand)
@@ -85,13 +57,10 @@ func main() {
 }
 
 func runInputLoop(state *ui.State, term *ui.Terminal) string {
-	ui.Render(state)
+	ui.Render(state, term.Screen())
 
 	for {
-		key, err := ui.ReadKey()
-		if err != nil {
-			continue
-		}
+		key := ui.ReadKey(term.Screen())
 
 		switch state.Mode {
 		case ui.ModeInsert:
@@ -138,6 +107,6 @@ func runInputLoop(state *ui.State, term *ui.Terminal) string {
 			}
 		}
 
-		ui.Render(state)
+		ui.Render(state, term.Screen())
 	}
 }

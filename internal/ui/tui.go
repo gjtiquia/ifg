@@ -1,83 +1,64 @@
 package ui
 
 import (
-	"fmt"
-	"os"
-
-	"golang.org/x/term"
+	"github.com/gdamore/tcell/v2"
 )
 
 type Terminal struct {
-	originalState *term.State
+	screen tcell.Screen
 }
 
 func SetupTerminal() (*Terminal, error) {
-	fd := int(os.Stdin.Fd())
-	originalState, err := term.MakeRaw(fd)
+	screen, err := tcell.NewScreen()
 	if err != nil {
-		return nil, fmt.Errorf("failed to set terminal to raw mode: %w", err)
+		return nil, err
 	}
-
-	return &Terminal{originalState: originalState}, nil
+	if err := screen.Init(); err != nil {
+		return nil, err
+	}
+	screen.SetStyle(tcell.StyleDefault)
+	return &Terminal{screen: screen}, nil
 }
 
-func (t *Terminal) Restore() error {
-	fd := int(os.Stdin.Fd())
-	return term.Restore(fd, t.originalState)
+func (t *Terminal) Restore() {
+	t.screen.Fini()
 }
 
-func (t *Terminal) GetSize() (int, int, error) {
-	fd := int(os.Stdin.Fd())
-	return term.GetSize(fd)
+func (t *Terminal) GetSize() (int, int) {
+	return t.screen.Size()
 }
 
-func ClearScreen() {
-	fmt.Print("\x1b[2J")
-	fmt.Print("\x1b[H")
+func (t *Terminal) Screen() tcell.Screen {
+	return t.screen
 }
 
-func EnterAlternateScreen() {
-	fmt.Print("\x1b[?1049h")
-	fmt.Print("\x1b[2J")
-	fmt.Print("\x1b[H")
-	HideCursor()
-}
+func Render(state *State, screen tcell.Screen) {
+	screen.Clear()
 
-func ExitAlternateScreen() {
-	ShowCursor()
-	fmt.Print("\x1b[?1049l")
-}
+	row := 0
 
-func HideCursor() {
-	fmt.Print("\x1b[?25l")
-}
-
-func ShowCursor() {
-	fmt.Print("\x1b[?25h")
-}
-
-func Render(state *State) {
-	fmt.Print("\x1b[2J\x1b[H")
-
-	fmt.Println("\x1b[1mifg - [i] [f]or[g]ot that cmd again\x1b[0m")
-	fmt.Println()
+	header := "ifg - [i] [f]or[g]ot that cmd again"
+	drawText(screen, 0, row, header, tcell.StyleDefault.Bold(true))
+	row += 2
 
 	prompt := "type to search: "
 	if state.Mode == ModeNormal {
 		prompt = "normal mode: "
 	}
-	fmt.Printf("%s%s\n", prompt, state.SearchBuf)
-	fmt.Println()
+	drawText(screen, 0, row, prompt+state.SearchBuf, tcell.StyleDefault)
+	row += 2
 
-	fmt.Println("---")
-	fmt.Println()
+	drawText(screen, 0, row, "---", tcell.StyleDefault)
+	row += 2
 
 	if len(state.Filtered) == 0 {
-		fmt.Println("\x1b[90mNo results found\x1b[0m")
+		drawText(screen, 0, row, "No results found", tcell.StyleDefault.Dim(true))
+		screen.Show()
 		return
 	}
 
-	visibleHeight := state.TerminalHeight - 8
+	_, height := screen.Size()
+	visibleHeight := height - row - 2
 	if visibleHeight < 1 {
 		visibleHeight = 1
 	}
@@ -87,34 +68,85 @@ func Render(state *State) {
 		entry := state.Filtered[entryIdx]
 
 		isSelected := entryIdx == state.SelectedIdx
+		style := tcell.StyleDefault
+		if isSelected {
+			style = style.Bold(true)
+		}
+
 		prefix := "  "
 		if isSelected {
 			prefix = "> "
 		}
 
-		if isSelected {
-			fmt.Print("\x1b[1m")
-		}
-
 		if entry.Title != "" {
-			fmt.Printf("%s# %s\n", prefix, entry.Title)
+			drawText(screen, 0, row, prefix+"# "+entry.Title, style)
+			row++
 		}
 
 		for _, desc := range entry.Description {
-			fmt.Printf("%s# %s\n", prefix, desc)
+			descPrefix := "  "
+			if isSelected {
+				descPrefix = "> "
+			}
+			drawText(screen, 0, row, descPrefix+"# "+desc, style)
+			row++
 		}
 
-		fmt.Printf("%s%s\n", prefix, entry.Command)
-
+		cmdPrefix := "  "
 		if isSelected {
-			fmt.Print("\x1b[0m")
+			cmdPrefix = "> "
 		}
-
-		fmt.Println()
+		drawText(screen, 0, row, cmdPrefix+entry.Command, style)
+		row += 2
 	}
 
 	if state.ScrollOffset > 0 || state.ScrollOffset+visibleHeight < len(state.Filtered) {
-		fmt.Printf("\x1b[90m[%d-%d of %d]\x1b[0m\n", state.ScrollOffset+1, min(state.ScrollOffset+visibleHeight, len(state.Filtered)), len(state.Filtered))
+		scrollIndicator := ""
+		scrollIndicator += "["
+		scrollIndicator += string(rune('0' + (state.ScrollOffset+1)/10))
+		scrollIndicator += string(rune('0' + (state.ScrollOffset+1)%10))
+		scrollIndicator += "-"
+		scrollIndicator += string(rune('0' + min(state.ScrollOffset+visibleHeight, len(state.Filtered))/10))
+		scrollIndicator += string(rune('0' + min(state.ScrollOffset+visibleHeight, len(state.Filtered))%10))
+		scrollIndicator += " of "
+		scrollIndicator += string(rune('0' + len(state.Filtered)/10))
+		scrollIndicator += string(rune('0' + len(state.Filtered)%10))
+		scrollIndicator += "]"
+		scrollText := ""
+		scrollText += "["
+		n := state.ScrollOffset + 1
+		if n < 10 {
+			scrollText += string(rune('0' + n))
+		} else {
+			scrollText += string(rune('0' + n/10))
+			scrollText += string(rune('0' + n%10))
+		}
+		scrollText += "-"
+		endIdx := min(state.ScrollOffset+visibleHeight, len(state.Filtered))
+		if endIdx < 10 {
+			scrollText += string(rune('0' + endIdx))
+		} else {
+			scrollText += string(rune('0' + endIdx/10))
+			scrollText += string(rune('0' + endIdx%10))
+		}
+		scrollText += " of "
+		total := len(state.Filtered)
+		if total < 10 {
+			scrollText += string(rune('0' + total))
+		} else {
+			scrollText += string(rune('0' + total/10))
+			scrollText += string(rune('0' + total%10))
+		}
+		scrollText += "]"
+		drawText(screen, 0, height-1, scrollText, tcell.StyleDefault.Dim(true))
+	}
+
+	screen.Show()
+}
+
+func drawText(screen tcell.Screen, x, y int, text string, style tcell.Style) {
+	for i, ch := range text {
+		screen.SetContent(x+i, y, ch, nil, style)
 	}
 }
 
