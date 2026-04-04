@@ -13,7 +13,7 @@ go install github.com/gjtiquia/ifg@latest
 ```
 
 <details>
-    <summary>Command 'ifg' not found</summary>
+    <summary>`Command 'ifg' not found`</summary>
 
 ```bash
 # make sure this is in your .bashrc / .zshrc
