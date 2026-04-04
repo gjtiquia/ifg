@@ -65,7 +65,7 @@ To enable history integration (works in bash and zsh):
 
 **Add to `~/.bashrc` or `~/.zshrc`:**
 ```bash
-source "$(ifg --sh)"
+eval "$(ifg --sh)"
 ```
 
 **How it works:**
@@ -83,10 +83,9 @@ source "$(ifg --sh)"
 
 ## Configuration
 
-Config location (checked in order):
-1. `$XDG_CONFIG_HOME/ifg/config.sh`
-2. `~/.config/ifg/config.sh` (if XDG_CONFIG_HOME not set)
-3. `~/.ifg/config.sh` (fallback)
+Config location:
+- `$XDG_CONFIG_HOME/ifg/config.sh` (if `XDG_CONFIG_HOME` is set)
+- `~/.ifg/config.sh` (fallback, if `XDG_CONFIG_HOME` is not set)
 
 If no config exists, a default one is created automatically.
 
@@ -165,7 +164,7 @@ go build -o ifg
 export PATH="$PWD:$PATH"
 
 # 2. Load wrapper
-source "$(ifg --sh)"
+eval "$(./ifg --sh)"
 
 # 3. Test
 ifg

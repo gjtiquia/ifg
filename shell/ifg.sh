@@ -1,6 +1,6 @@
 # ifg - interactive command finder
 # Add to ~/.bashrc OR ~/.zshrc:
-#   source "$(ifg --sh)"
+#   eval "$(ifg --sh)"
 
 ifg() {
 	local cmd=$(command ifg)
