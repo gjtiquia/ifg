@@ -86,15 +86,21 @@ func (s *State) SwitchToNormal() {
 
 func (s *State) SwitchToInsert(cursorPos string) {
 	s.Mode = ModeInsert
-	// 'i/I': Insert BEFORE cursor - keep cursor at current position
-	// 'a/A': Insert AFTER cursor - move cursor right by one
-	if cursorPos == "end" {
-		// Move cursor right to insert after current position
+	switch cursorPos {
+	case "before":
+		// 'i': Keep cursor as-is, insert before current position
+	case "after":
+		// 'a': Move right by one, insert after current position
 		if s.CursorIdx < len(s.SearchBuf) {
 			s.CursorIdx++
 		}
+	case "start":
+		// 'I': Move to beginning of line
+		s.CursorIdx = 0
+	case "end":
+		// 'A': Move to end of line
+		s.CursorIdx = len(s.SearchBuf)
 	}
-	// If "start", keep CursorIdx as-is (insert before current position)
 }
 
 func (s *State) GetSelectedCommand() string {

@@ -154,9 +154,13 @@ func runInputLoop(state *ui.State, term *ui.Terminal) string {
 					state.MoveWordEnd()
 				case 'E':
 					state.MoveWORDEnd()
-				case 'i', 'I':
+				case 'i':
+					state.SwitchToInsert("before")
+				case 'I':
 					state.SwitchToInsert("start")
-				case 'a', 'A':
+				case 'a':
+					state.SwitchToInsert("after")
+				case 'A':
 					state.SwitchToInsert("end")
 				}
 			case ui.KeyUp:
