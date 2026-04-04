@@ -24,8 +24,14 @@ export PATH=$PATH:$HOME/go/bin
 other useful commands:
 
 ```bash
-# run this to check what is latest available version
+# checks what is the latest available version on go proxy cache
 go list -m github.com/gjtiquia/ifg@latest
+
+# checks what is the latest version directly from GitHub
+GOPROXY=direct go list -m github.com/gjtiquia/ifg@latest
+
+# installs latest version directly from GitHub
+GOPROXY=direct go install github.com/gjtiquia/ifg@latest
 
 # installs binary at current directory instead of a global install
 GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
