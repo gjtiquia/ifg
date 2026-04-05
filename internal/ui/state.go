@@ -91,6 +91,10 @@ func (s *State) NavigateDown() {
 		if maxVisibleEntries < 1 {
 			maxVisibleEntries = 1
 		}
+		// Reserve one entry worth of space for scroll indicator
+		if maxVisibleEntries > 1 {
+			maxVisibleEntries -= 1
+		}
 		if s.SelectedIdx >= s.ScrollOffset+maxVisibleEntries {
 			s.ScrollOffset = s.SelectedIdx - maxVisibleEntries + 1
 		}

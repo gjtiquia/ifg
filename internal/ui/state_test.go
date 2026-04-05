@@ -317,15 +317,78 @@ func TestNavigationAfterSearch(t *testing.T) {
 	})
 }
 
-func makeEntries(count int) []config.Entry {
-	entries := make([]config.Entry, count)
-	for i := 0; i < count; i++ {
-		entries[i] = config.Entry{
-			Title:   "command",
-			Command: "cmd",
+func TestSelectionStaysWithinContentBounds(t *testing.T) {
+	entries := makeEntries(100)
+
+	t.Run("selection stays within visible content area aftermultiple navigate down", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		maxVisibleEntries := visibleRows / estimatedRowsPerEntry
+		if maxVisibleEntries < 1 {
+			maxVisibleEntries = 1
 		}
-	}
-	return entries
+
+		maxEntriesBeforeScrollIndicator := maxVisibleEntries - 1
+		if maxEntriesBeforeScrollIndicator < 1 {
+			maxEntriesBeforeScrollIndicator = 1
+		}
+
+		for i := 0; i < maxEntriesBeforeScrollIndicator+5; i++ {
+			state.NavigateDown()
+		}
+
+		visibleEntriesFromTop := maxEntriesBeforeScrollIndicator
+		maxSelectableIdx := state.ScrollOffset + visibleEntriesFromTop
+
+		if state.SelectedIdx > maxSelectableIdx {
+			t.Errorf("SelectedIdx %d exceeds visible content bounds (max %d with ScrollOffset %d)",
+				state.SelectedIdx, maxSelectableIdx, state.ScrollOffset)
+		}
+	})
+
+	t.Run("scroll triggers when selection approaches content boundary", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		maxVisibleEntries := visibleRows / estimatedRowsPerEntry
+		if maxVisibleEntries < 1 {
+			maxVisibleEntries = 1
+		}
+
+		scrollThreshold := maxVisibleEntries - 2
+		if scrollThreshold < 1 {
+			scrollThreshold = 1
+		}
+
+		for i := 0; i < scrollThreshold; i++ {
+			state.NavigateDown()
+		}
+
+		if state.ScrollOffset == 0 {
+			t.Errorf("ScrollOffset should have advanced before selection reaches boundary, got ScrollOffset %d", state.ScrollOffset)
+		}
+	})
+
+	t.Run("selection never goes past last visible entry before scroll indicator", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		for i := 0; i < 60; i++ {
+			state.NavigateDown()
+		}
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		approxVisibleEntries := visibleRows / estimatedRowsPerEntry
+
+		distanceFromScrollOffset := state.SelectedIdx - state.ScrollOffset
+		if distanceFromScrollOffset > approxVisibleEntries {
+			t.Errorf("SelectedIdx %d is %d entries past ScrollOffset %d, should be within ~%d visible entries",
+				state.SelectedIdx, distanceFromScrollOffset, state.ScrollOffset, approxVisibleEntries)
+		}
+	})
 }
 
 func TestSelectionStaysWithinVisibleArea(t *testing.T) {
@@ -414,4 +477,15 @@ func TestBottomPaddingRespected(t *testing.T) {
 				state.SelectedIdx, maxVisibleFromTop-1)
 		}
 	})
+}
+
+func makeEntries(count int) []config.Entry {
+	entries := make([]config.Entry, count)
+	for i := 0; i < count; i++ {
+		entries[i] = config.Entry{
+			Title:   "command",
+			Command: "cmd",
+		}
+	}
+	return entries
 }
