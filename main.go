@@ -108,6 +108,8 @@ func main() {
 
 	selectedCommand := runInputLoop(state, term)
 
+	term.Restore()
+
 	if selectedCommand != "" {
 		fmt.Println(selectedCommand)
 		os.Exit(0)
