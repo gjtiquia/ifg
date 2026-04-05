@@ -74,9 +74,14 @@ func matchEntry(entry config.Entry, tokens []string) int {
 func matchToken(entry config.Entry, token string) int {
 	lowerCommand := strings.ToLower(entry.Command)
 	lowerTitle := strings.ToLower(entry.Title)
+	lowerFilename := strings.ToLower(entry.Filename)
 
 	if strings.Contains(lowerCommand, token) {
 		return 100
+	}
+
+	if strings.Contains(lowerFilename, token) {
+		return 75
 	}
 
 	if strings.Contains(lowerTitle, token) {

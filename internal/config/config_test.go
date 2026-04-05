@@ -61,6 +61,7 @@ git commit -m "message"
 			Title:       "git commit",
 			Description: []string{"commits staged changes", "$ git commit -m \"message\""},
 			Command:     "git commit -m \"message\"",
+			Filename:    "test.sh",
 		}
 
 		if entries[0].Title != expected.Title {
@@ -71,6 +72,9 @@ git commit -m "message"
 		}
 		if entries[0].Command != expected.Command {
 			t.Errorf("expected command %q, got %q", expected.Command, entries[0].Command)
+		}
+		if entries[0].Filename != expected.Filename {
+			t.Errorf("expected filename %q, got %q", expected.Filename, entries[0].Filename)
 		}
 	})
 
@@ -180,8 +184,14 @@ echo "from a"
 		if entries[0].Title != "first file" {
 			t.Errorf("expected first entry to be from a.sh, got %q", entries[0].Title)
 		}
+		if entries[0].Filename != "a.sh" {
+			t.Errorf("expected first entry filename to be a.sh, got %q", entries[0].Filename)
+		}
 		if entries[1].Title != "second file" {
 			t.Errorf("expected second entry to be from b.sh, got %q", entries[1].Title)
+		}
+		if entries[1].Filename != "b.sh" {
+			t.Errorf("expected second entry filename to be b.sh, got %q", entries[1].Filename)
 		}
 	})
 }
@@ -212,8 +222,14 @@ echo "from nested"
 		if entries[0].Title != "root file" {
 			t.Errorf("expected first entry to be from root.sh, got %q", entries[0].Title)
 		}
+		if entries[0].Filename != "root.sh" {
+			t.Errorf("expected first entry filename to be root.sh, got %q", entries[0].Filename)
+		}
 		if entries[1].Title != "nested file" {
 			t.Errorf("expected second entry to be from sub/nested.sh, got %q", entries[1].Title)
+		}
+		if entries[1].Filename != "sub/nested.sh" {
+			t.Errorf("expected second entry filename to be sub/nested.sh, got %q", entries[1].Filename)
 		}
 	})
 }

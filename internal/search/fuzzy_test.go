@@ -78,6 +78,28 @@ func TestMatch(t *testing.T) {
 			t.Errorf("expected title %q, got %q", "git commit with message", result[0].Title)
 		}
 	})
+
+	t.Run("filename match", func(t *testing.T) {
+		filenameEntries := []config.Entry{
+			{
+				Title:    "git status",
+				Command:  "git status",
+				Filename: "git.sh",
+			},
+			{
+				Title:    "docker ps",
+				Command:  "docker ps -a",
+				Filename: "docker.sh",
+			},
+		}
+		result := Match(filenameEntries, "docker.sh")
+		if len(result) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(result))
+		}
+		if result[0].Filename != "docker.sh" {
+			t.Errorf("expected filename %q, got %q", "docker.sh", result[0].Filename)
+		}
+	})
 }
 
 func TestScoring(t *testing.T) {
@@ -115,6 +137,32 @@ func TestScoring(t *testing.T) {
 			if prevScore < currScore {
 				t.Errorf("results not properly sorted by score")
 			}
+		}
+	})
+
+	t.Run("filename scores between command and title", func(t *testing.T) {
+		filenameEntries := []config.Entry{
+			{
+				Title:    "search items",
+				Command:  "find",
+				Filename: "search.sh",
+			},
+			{
+				Title:    "search command",
+				Command:  "search",
+				Filename: "other.sh",
+			},
+		}
+		result := Match(filenameEntries, "search")
+		if len(result) != 2 {
+			t.Fatalf("expected 2 matches, got %d", len(result))
+		}
+
+		if result[0].Command != "search" {
+			t.Errorf("expected first result to have 'search' in command (score 100), got %q", result[0].Command)
+		}
+		if result[1].Filename != "search.sh" {
+			t.Errorf("expected second result to have 'search' in filename (score 75), got %q", result[1].Filename)
 		}
 	})
 }

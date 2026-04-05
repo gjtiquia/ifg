@@ -20,6 +20,7 @@ type Entry struct {
 	Title       string
 	Description []string
 	Command     string
+	Filename    string
 }
 
 func GetConfigDir() string {
@@ -66,7 +67,7 @@ func LoadConfig(dir string) ([]Entry, error) {
 
 	var entries []Entry
 	for _, file := range files {
-		fileEntries, err := parseFile(filepath.Join(dir, file))
+		fileEntries, err := parseFile(filepath.Join(dir, file), file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", file, err)
 		}
@@ -76,7 +77,7 @@ func LoadConfig(dir string) ([]Entry, error) {
 	return entries, nil
 }
 
-func parseFile(path string) ([]Entry, error) {
+func parseFile(path, filename string) ([]Entry, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
@@ -93,6 +94,7 @@ func parseFile(path string) ([]Entry, error) {
 
 		if strings.TrimSpace(line) == "" {
 			if currentEntry != nil && currentEntry.Command != "" {
+				currentEntry.Filename = filename
 				entries = append(entries, *currentEntry)
 				currentEntry = nil
 				inBlock = false
@@ -129,6 +131,7 @@ func parseFile(path string) ([]Entry, error) {
 	}
 
 	if currentEntry != nil && currentEntry.Command != "" {
+		currentEntry.Filename = filename
 		entries = append(entries, *currentEntry)
 	}
 
