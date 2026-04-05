@@ -61,6 +61,11 @@ func (s *State) DeleteChar() {
 	}
 }
 
+const (
+	headerRows            = 6
+	estimatedRowsPerEntry = 3
+)
+
 func (s *State) NavigateUp() {
 	if s.SelectedIdx > 0 {
 		s.SelectedIdx--
@@ -73,9 +78,12 @@ func (s *State) NavigateUp() {
 func (s *State) NavigateDown() {
 	if s.SelectedIdx < len(s.Filtered)-1 {
 		s.SelectedIdx++
-		visibleHeight := s.TerminalHeight - 2
-		if s.SelectedIdx >= s.ScrollOffset+visibleHeight {
-			s.ScrollOffset = s.SelectedIdx - visibleHeight + 1
+		visibleHeight := s.TerminalHeight - headerRows - 2
+		if visibleHeight < 1 {
+			visibleHeight = 1
+		}
+		if s.SelectedIdx >= s.ScrollOffset+visibleHeight/estimatedRowsPerEntry+1 {
+			s.ScrollOffset = s.SelectedIdx - visibleHeight/estimatedRowsPerEntry
 		}
 	}
 }
