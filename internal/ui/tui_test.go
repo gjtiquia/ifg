@@ -340,6 +340,66 @@ func TestVariableHeightEntriesStayWithinBounds(t *testing.T) {
 	})
 }
 
+func TestScrollIndicatorWithLargeEntryCounts(t *testing.T) {
+	findScrollIndicator := func(screen *MockScreen) (int, string) {
+		for y := 0; y < screen.height; y++ {
+			row := screen.RowAt(y)
+			if strings.Contains(row, " of ") && strings.Contains(row, "[") {
+				return y, row
+			}
+		}
+		return -1, ""
+	}
+
+	t.Run("scroll indicator shows correct numbers for 100+ entries", func(t *testing.T) {
+		entries := makeEntries(150)
+		state := NewState(entries)
+		state.TerminalHeight = 24
+		state.SelectedIdx = 100
+		for i := 0; i < 100; i++ {
+			state.NavigateDown()
+		}
+
+		screen := NewMockScreen(80, 24)
+		Render(state, screen)
+
+		row, content := findScrollIndicator(screen)
+		if row == -1 {
+			t.Fatal("scroll indicator should be visible")
+		}
+
+		t.Logf("Scroll indicator row content: %q", content)
+
+		if !strings.Contains(content, "150") {
+			t.Errorf("scroll indicator should contain '150' (total entries), got %q", content)
+		}
+	})
+
+	t.Run("scroll indicator shows correct numbers for 1000+ entries", func(t *testing.T) {
+		entries := makeEntries(1000)
+		state := NewState(entries)
+		state.TerminalHeight = 24
+		state.SelectedIdx = 500
+		for i := 0; i < 500; i++ {
+			state.NavigateDown()
+		}
+
+		screen := NewMockScreen(80, 24)
+		Render(state, screen)
+
+		row, content := findScrollIndicator(screen)
+		if row == -1 {
+			t.Fatal("scroll indicator should be visible")
+		}
+
+		t.Logf("Scroll indicator row content: %q", content)
+
+		if !strings.Contains(content, "1000") {
+			t.Errorf("scroll indicator should contain '1000' (total entries), got %q", content)
+		}
+	})
+}
+
 func findRowContaining(screen *MockScreen, text string) int {
 	for y := 0; y < screen.height; y++ {
 		if strings.Contains(screen.RowAt(y), text) {

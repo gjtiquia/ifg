@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -144,31 +146,7 @@ func Render(state *State, screen Screen) {
 	}
 
 	if state.ScrollOffset > 0 || lastVisibleIdx < len(state.Filtered)-1 {
-		scrollText := "["
-		n := state.ScrollOffset + 1
-		if n < 10 {
-			scrollText += string(rune('0' + n))
-		} else {
-			scrollText += string(rune('0' + n/10))
-			scrollText += string(rune('0' + n%10))
-		}
-		scrollText += "-"
-		endIdx := lastVisibleIdx + 1
-		if endIdx < 10 {
-			scrollText += string(rune('0' + endIdx))
-		} else {
-			scrollText += string(rune('0' + endIdx/10))
-			scrollText += string(rune('0' + endIdx%10))
-		}
-		scrollText += " of "
-		total := len(state.Filtered)
-		if total < 10 {
-			scrollText += string(rune('0' + total))
-		} else {
-			scrollText += string(rune('0' + total/10))
-			scrollText += string(rune('0' + total%10))
-		}
-		scrollText += "]"
+		scrollText := "[" + strconv.Itoa(state.ScrollOffset+1) + "-" + strconv.Itoa(lastVisibleIdx+1) + " of " + strconv.Itoa(len(state.Filtered)) + "]"
 		drawText(screen, 0, scrollIndicatorRow, scrollText, Style{Dim: true})
 	}
 
