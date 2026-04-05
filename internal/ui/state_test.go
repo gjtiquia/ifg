@@ -6,6 +6,39 @@ import (
 	"github.com/gjtiquia/ifg/internal/config"
 )
 
+func TestHeaderConstants(t *testing.T) {
+	t.Run("headerRows equals sum of components", func(t *testing.T) {
+		expected := headerTitleRows + headerPromptRows + headerSeparatorRows
+		if headerRows != expected {
+			t.Errorf("headerRows = %d, expected %d (sum of components)", headerRows, expected)
+		}
+	})
+
+	t.Run("all header components are positive", func(t *testing.T) {
+		if headerTitleRows <= 0 {
+			t.Errorf("headerTitleRows should be positive, got %d", headerTitleRows)
+		}
+		if headerPromptRows <= 0 {
+			t.Errorf("headerPromptRows should be positive, got %d", headerPromptRows)
+		}
+		if headerSeparatorRows <= 0 {
+			t.Errorf("headerSeparatorRows should be positive, got %d", headerSeparatorRows)
+		}
+	})
+
+	t.Run("bottomPadding is positive", func(t *testing.T) {
+		if bottomPadding <= 0 {
+			t.Errorf("bottomPadding should be positive, got %d", bottomPadding)
+		}
+	})
+
+	t.Run("estimatedRowsPerEntry is positive", func(t *testing.T) {
+		if estimatedRowsPerEntry <= 0 {
+			t.Errorf("estimatedRowsPerEntry should be positive, got %d", estimatedRowsPerEntry)
+		}
+	})
+}
+
 func TestNavigateUp(t *testing.T) {
 	entries := makeEntries(20)
 
@@ -187,6 +220,23 @@ func TestScrollBoundaryConditions(t *testing.T) {
 		}
 	})
 
+	t.Run("scroll respects headerRows constant", func(t *testing.T) {
+		entries := makeEntries(50)
+		state := NewState(entries)
+		state.TerminalHeight = headerRows + bottomPadding + 3*estimatedRowsPerEntry
+
+		for i := 0; i < 10; i++ {
+			state.NavigateDown()
+		}
+
+		if state.SelectedIdx != 10 {
+			t.Errorf("expected SelectedIdx 10, got %d", state.SelectedIdx)
+		}
+		if state.ScrollOffset < 1 {
+			t.Errorf("expected ScrollOffset >= 1, got %d", state.ScrollOffset)
+		}
+	})
+
 	t.Run("large number of entries - scroll advances properly", func(t *testing.T) {
 		entries := makeEntries(100)
 		state := NewState(entries)
@@ -276,4 +326,92 @@ func makeEntries(count int) []config.Entry {
 		}
 	}
 	return entries
+}
+
+func TestSelectionStaysWithinVisibleArea(t *testing.T) {
+	entries := makeEntries(100)
+
+	t.Run("selection should not scroll into bottom padding area", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = headerRows + bottomPadding + 10
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		maxVisibleEntries := visibleRows / estimatedRowsPerEntry
+
+		if maxVisibleEntries < 1 {
+			maxVisibleEntries = 1
+		}
+
+		for i := 0; i < 50; i++ {
+			state.NavigateDown()
+		}
+
+		visibleEntriesFromOffset := maxVisibleEntries
+		maxSelectableIndex := state.ScrollOffset + visibleEntriesFromOffset - 1
+
+		if state.SelectedIdx > maxSelectableIndex {
+			t.Errorf("SelectedIdx %d is beyond visible area (max %d with offset %d)",
+				state.SelectedIdx, maxSelectableIndex, state.ScrollOffset)
+		}
+	})
+
+	t.Run("scroll offset adjusted when navigating to keep selection visible", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 20
+
+		for i := 0; i < 30; i++ {
+			state.NavigateDown()
+		}
+
+		if state.SelectedIdx < state.ScrollOffset {
+			t.Errorf("SelectedIdx %d is above ScrollOffset %d", state.SelectedIdx, state.ScrollOffset)
+		}
+	})
+
+	t.Run("selection can reach last entry without going into padding", func(t *testing.T) {
+		entries := makeEntries(10)
+		state := NewState(entries)
+		state.TerminalHeight = headerRows + bottomPadding + 15
+
+		for i := 0; i < 20; i++ {
+			state.NavigateDown()
+		}
+
+		if state.SelectedIdx != 9 {
+			t.Errorf("expected SelectedIdx 9 (last entry), got %d", state.SelectedIdx)
+		}
+	})
+}
+
+func TestBottomPaddingRespected(t *testing.T) {
+	entries := makeEntries(50)
+
+	t.Run("visible entry count accounts for bottom padding", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		if visibleRows <= 0 {
+			t.Errorf("visibleRows should be positive, got %d", visibleRows)
+		}
+
+		_ = visibleRows
+	})
+
+	t.Run("scroll advances before selection hits bottom padding", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = headerRows + bottomPadding + 6
+
+		for i := 0; i < 10; i++ {
+			state.NavigateDown()
+		}
+
+		visibleRows := state.TerminalHeight - headerRows - bottomPadding
+		maxVisibleFromTop := state.ScrollOffset + visibleRows/estimatedRowsPerEntry
+
+		if state.SelectedIdx >= maxVisibleFromTop {
+			t.Errorf("SelectedIdx %d should not reach bottom padding area (visible up to %d)",
+				state.SelectedIdx, maxVisibleFromTop-1)
+		}
+	})
 }

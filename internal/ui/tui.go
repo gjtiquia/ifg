@@ -81,14 +81,19 @@ func Render(state *State, screen tcell.Screen) {
 	}
 
 	_, height := screen.Size()
-	visibleHeight := height - row - 2
-	if visibleHeight < 1 {
-		visibleHeight = 1
+	maxRow := height - bottomPadding
+	if maxRow < row+1 {
+		maxRow = row + 1
 	}
 
-	for i := 0; i < visibleHeight && i+state.ScrollOffset < len(state.Filtered); i++ {
+	var lastVisibleIdx int
+	for i := 0; i+state.ScrollOffset < len(state.Filtered); i++ {
+		if row >= maxRow {
+			break
+		}
 		entryIdx := i + state.ScrollOffset
 		entry := state.Filtered[entryIdx]
+		lastVisibleIdx = entryIdx
 
 		isSelected := entryIdx == state.SelectedIdx
 		style := tcell.StyleDefault
@@ -107,6 +112,9 @@ func Render(state *State, screen tcell.Screen) {
 		}
 
 		for _, desc := range entry.Description {
+			if row >= maxRow {
+				break
+			}
 			descPrefix := "  "
 			if isSelected {
 				descPrefix = "> "
@@ -115,6 +123,9 @@ func Render(state *State, screen tcell.Screen) {
 			row++
 		}
 
+		if row >= maxRow {
+			break
+		}
 		cmdPrefix := "  "
 		if isSelected {
 			cmdPrefix = "> "
@@ -123,20 +134,8 @@ func Render(state *State, screen tcell.Screen) {
 		row += 2
 	}
 
-	if state.ScrollOffset > 0 || state.ScrollOffset+visibleHeight < len(state.Filtered) {
-		scrollIndicator := ""
-		scrollIndicator += "["
-		scrollIndicator += string(rune('0' + (state.ScrollOffset+1)/10))
-		scrollIndicator += string(rune('0' + (state.ScrollOffset+1)%10))
-		scrollIndicator += "-"
-		scrollIndicator += string(rune('0' + min(state.ScrollOffset+visibleHeight, len(state.Filtered))/10))
-		scrollIndicator += string(rune('0' + min(state.ScrollOffset+visibleHeight, len(state.Filtered))%10))
-		scrollIndicator += " of "
-		scrollIndicator += string(rune('0' + len(state.Filtered)/10))
-		scrollIndicator += string(rune('0' + len(state.Filtered)%10))
-		scrollIndicator += "]"
-		scrollText := ""
-		scrollText += "["
+	if state.ScrollOffset > 0 || lastVisibleIdx < len(state.Filtered)-1 {
+		scrollText := "["
 		n := state.ScrollOffset + 1
 		if n < 10 {
 			scrollText += string(rune('0' + n))
@@ -145,7 +144,7 @@ func Render(state *State, screen tcell.Screen) {
 			scrollText += string(rune('0' + n%10))
 		}
 		scrollText += "-"
-		endIdx := min(state.ScrollOffset+visibleHeight, len(state.Filtered))
+		endIdx := lastVisibleIdx + 1
 		if endIdx < 10 {
 			scrollText += string(rune('0' + endIdx))
 		} else {
@@ -161,7 +160,7 @@ func Render(state *State, screen tcell.Screen) {
 			scrollText += string(rune('0' + total%10))
 		}
 		scrollText += "]"
-		drawText(screen, 0, height-1, scrollText, tcell.StyleDefault.Dim(true))
+		drawText(screen, 0, maxRow-1, scrollText, tcell.StyleDefault.Dim(true))
 	}
 
 	screen.Show()
