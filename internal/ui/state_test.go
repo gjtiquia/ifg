@@ -1554,6 +1554,273 @@ func TestIsSpace(t *testing.T) {
 	}
 }
 
+func TestSwitchToNormal(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("changes mode to normal", func(t *testing.T) {
+		state := NewState(entries)
+		state.Mode = ModeInsert
+
+		state.SwitchToNormal()
+
+		if state.Mode != ModeNormal {
+			t.Errorf("expected ModeNormal, got %v", state.Mode)
+		}
+	})
+
+	t.Run("preserves search buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.Mode = ModeInsert
+		state.SearchBuf = "test"
+		state.CursorIdx = 2
+
+		state.SwitchToNormal()
+
+		if state.SearchBuf != "test" {
+			t.Errorf("expected SearchBuf 'test', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from normal mode stays normal", func(t *testing.T) {
+		state := NewState(entries)
+		state.Mode = ModeNormal
+
+		state.SwitchToNormal()
+
+		if state.Mode != ModeNormal {
+			t.Errorf("expected ModeNormal, got %v", state.Mode)
+		}
+	})
+}
+
+func TestSwitchToInsert(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("changes mode to insert", func(t *testing.T) {
+		state := NewState(entries)
+		state.Mode = ModeNormal
+
+		state.SwitchToInsert("before")
+
+		if state.Mode != ModeInsert {
+			t.Errorf("expected ModeInsert, got %v", state.Mode)
+		}
+	})
+
+	t.Run("before keeps cursor position", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 3
+
+		state.SwitchToInsert("before")
+
+		if state.CursorIdx != 3 {
+			t.Errorf("expected CursorIdx 3, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("after moves cursor right by one", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 2
+
+		state.SwitchToInsert("after")
+
+		if state.CursorIdx != 3 {
+			t.Errorf("expected CursorIdx 3, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("after at end of buffer stays at end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 5
+
+		state.SwitchToInsert("after")
+
+		if state.CursorIdx != 5 {
+			t.Errorf("expected CursorIdx 5, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("after with empty buffer stays at zero", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.SwitchToInsert("after")
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("start moves cursor to beginning", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 3
+
+		state.SwitchToInsert("start")
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("start with empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.SwitchToInsert("start")
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("end moves cursor to end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 2
+
+		state.SwitchToInsert("end")
+
+		if state.CursorIdx != 5 {
+			t.Errorf("expected CursorIdx 5, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("end with empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.SwitchToInsert("end")
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("unknown position keeps cursor as-is", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 3
+		state.Mode = ModeNormal
+
+		state.SwitchToInsert("unknown")
+
+		if state.Mode != ModeInsert {
+			t.Errorf("expected ModeInsert, got %v", state.Mode)
+		}
+		if state.CursorIdx != 3 {
+			t.Errorf("expected CursorIdx 3, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("preserves search buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+
+		state.SwitchToInsert("end")
+
+		if state.SearchBuf != "hello" {
+			t.Errorf("expected SearchBuf 'hello', got %q", state.SearchBuf)
+		}
+	})
+}
+
+func TestGetSelectedCommand(t *testing.T) {
+	entries := []config.Entry{
+		{Command: "git status"},
+		{Command: "git commit"},
+		{Command: "docker ps"},
+	}
+
+	t.Run("returns selected command", func(t *testing.T) {
+		state := NewState(entries)
+		state.SelectedIdx = 1
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "git commit" {
+			t.Errorf("expected 'git commit', got %q", cmd)
+		}
+	})
+
+	t.Run("returns first command at index 0", func(t *testing.T) {
+		state := NewState(entries)
+		state.SelectedIdx = 0
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "git status" {
+			t.Errorf("expected 'git status', got %q", cmd)
+		}
+	})
+
+	t.Run("returns last command", func(t *testing.T) {
+		state := NewState(entries)
+		state.SelectedIdx = 2
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "docker ps" {
+			t.Errorf("expected 'docker ps', got %q", cmd)
+		}
+	})
+
+	t.Run("returns empty string for empty filtered", func(t *testing.T) {
+		state := NewState([]config.Entry{})
+		state.SelectedIdx = 0
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "" {
+			t.Errorf("expected '', got %q", cmd)
+		}
+	})
+
+	t.Run("returns empty string for negative index", func(t *testing.T) {
+		state := NewState(entries)
+		state.SelectedIdx = -1
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "" {
+			t.Errorf("expected '', got %q", cmd)
+		}
+	})
+
+	t.Run("returns empty string for index out of bounds", func(t *testing.T) {
+		state := NewState(entries)
+		state.SelectedIdx = 10
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "" {
+			t.Errorf("expected '', got %q", cmd)
+		}
+	})
+
+	t.Run("works with filtered results", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "git"
+		state.UpdateSearch()
+		state.SelectedIdx = 0
+
+		cmd := state.GetSelectedCommand()
+
+		if cmd != "git status" {
+			t.Errorf("expected 'git status', got %q", cmd)
+		}
+	})
+}
+
 func makeEntries(count int) []config.Entry {
 	entries := make([]config.Entry, count)
 	for i := 0; i < count; i++ {
