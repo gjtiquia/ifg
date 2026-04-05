@@ -88,9 +88,16 @@ func Render(state *State, screen Screen) {
 		maxRow = row + 1
 	}
 
+	// Reserve one row for scroll indicator
+	scrollIndicatorRow := maxRow - 1
+	contentEndRow := scrollIndicatorRow - 1
+	if contentEndRow < row+1 {
+		contentEndRow = row + 1
+	}
+
 	var lastVisibleIdx int
 	for i := 0; i+state.ScrollOffset < len(state.Filtered); i++ {
-		if row >= maxRow {
+		if row >= contentEndRow {
 			break
 		}
 		entryIdx := i + state.ScrollOffset
@@ -114,7 +121,7 @@ func Render(state *State, screen Screen) {
 		}
 
 		for _, desc := range entry.Description {
-			if row >= maxRow {
+			if row >= contentEndRow {
 				break
 			}
 			descPrefix := "  "
@@ -125,7 +132,7 @@ func Render(state *State, screen Screen) {
 			row++
 		}
 
-		if row >= maxRow {
+		if row >= contentEndRow {
 			break
 		}
 		cmdPrefix := "  "
@@ -162,7 +169,7 @@ func Render(state *State, screen Screen) {
 			scrollText += string(rune('0' + total%10))
 		}
 		scrollText += "]"
-		drawText(screen, 0, maxRow-1, scrollText, Style{Dim: true})
+		drawText(screen, 0, scrollIndicatorRow, scrollText, Style{Dim: true})
 	}
 
 	screen.Show()

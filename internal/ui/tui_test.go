@@ -170,6 +170,55 @@ func TestRenderSearchPrompt(t *testing.T) {
 	})
 }
 
+func TestRenderScrollIndicatorDoesNotOverlapEntries(t *testing.T) {
+	entries := makeEntries(50)
+	state := NewState(entries)
+	state.TerminalHeight = 24
+	state.SelectedIdx = 0
+
+	screen := NewMockScreen(80, state.TerminalHeight)
+	Render(state, screen)
+
+	maxRow := state.TerminalHeight - bottomPadding
+
+	scrollIndicatorRow := -1
+	for y := 0; y < state.TerminalHeight; y++ {
+		rowContent := screen.RowAt(y)
+		if strings.Contains(rowContent, "[") && strings.Contains(rowContent, " of ") {
+			scrollIndicatorRow = y
+			break
+		}
+	}
+
+	if scrollIndicatorRow == -1 {
+		t.Fatalf("scroll indicator should be visible")
+	}
+
+	if scrollIndicatorRow >= maxRow {
+		t.Errorf("scroll indicator at row %d should be below maxRow %d", scrollIndicatorRow, maxRow)
+	}
+
+	scrollRowContent := strings.TrimSpace(screen.RowAt(scrollIndicatorRow))
+	hasEntryMarker := strings.Contains(scrollRowContent, "> ") || (strings.Contains(scrollRowContent, "#") && !strings.HasPrefix(scrollRowContent, "["))
+	if hasEntryMarker {
+		t.Errorf("scroll indicator overlaps with entry content at row %d: %q", scrollIndicatorRow, scrollRowContent)
+	}
+
+	entryMaxRow := -1
+	for y := 0; y < state.TerminalHeight; y++ {
+		rowContent := screen.RowAt(y)
+		if strings.Contains(rowContent, "> ") || strings.Contains(rowContent, "#") {
+			if y > entryMaxRow {
+				entryMaxRow = y
+			}
+		}
+	}
+
+	if entryMaxRow >= scrollIndicatorRow && scrollIndicatorRow != -1 {
+		t.Errorf("entries end at row %d, should be before scroll indicator at row %d", entryMaxRow, scrollIndicatorRow)
+	}
+}
+
 func findRowContaining(screen *MockScreen, text string) int {
 	for y := 0; y < screen.height; y++ {
 		if strings.Contains(screen.RowAt(y), text) {
