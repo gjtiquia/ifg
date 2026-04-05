@@ -51,15 +51,43 @@ which is useful as you can access the command by simply pressing UP
 
 ```bash
 ifg
+
+# then type to fuzzy search
+# select the command with arrrow keys and press enter
+
+# vim keys are supported as well
+# escape and navigate with j/k. enter back to insert mode with i/I/a/A
 ```
 
 ## config
 
-### config location
-- if `XDG_CONFIG_HOME` is set: `$XDG_CONFIG_HOME/ifg/config.sh`
-- if `XDG_CONFIG_HOME` is not set: `~/.ifg/config.sh`
+### config directory location
+- if `XDG_CONFIG_HOME` is set: `$XDG_CONFIG_HOME/ifg/`
+- if `XDG_CONFIG_HOME` is not set: `~/.ifg/`
 
-if no config exists, a default one will be created on first running `ifg`
+if no config directory exists,
+the config directory will be automatically created on first running `ifg`,
+with a default config called `config.sh`
+
+### config directory structure
+
+all `*.sh` files in the config directory are read, sorted alphabetically by path:
+
+```
+~/.ifg/
+├── 01-git.sh
+├── 02-docker.sh
+├── personal/
+│   └── scripts.sh
+└── work/
+    ├── 01-ssh.sh
+    └── 02-deploy.sh
+```
+
+number prefixes are optional.
+use them for custom ordering.
+
+subdirectories are supported.
 
 ### config format
 
@@ -75,17 +103,22 @@ echo "another command"
 echo "titles and descriptions are overrated"
 ```
 
+check out the default `config.sh` for a more concrete example
+
 ## development
 
 ```bash
+# runs tests
+go test ./...
+
 # runs main.go
 go run .
 
 # builds binary at project root named `ifg`
 go build .
 
-# runs tests
-go test ./...
+# builds binary at ~/go/bin for global usage
+go install .
 ```
 
 ### testing shell integration
@@ -104,6 +137,3 @@ eval "$(ifg --sh)"
 ## license
 
 MIT
-
-## todos
-- support reading any `.sh` as a valid config - flexibility to .gitignore and separate different configs

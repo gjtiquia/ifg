@@ -24,9 +24,9 @@ func printHelp() {
 	fmt.Println()
 	fmt.Println("  ifg [flags]")
 	fmt.Println()
-	fmt.Println("## config path:")
+	fmt.Println("## config dir:")
 	fmt.Println()
-	fmt.Println("  " + config.GetConfigPath())
+	fmt.Println("  " + config.GetConfigDir())
 	fmt.Println()
 	fmt.Println("## flags:")
 	fmt.Println()
@@ -71,26 +71,26 @@ func main() {
 	}
 
 	config.SetDefaultConfig(defaultConfigContent)
-	configPath := config.GetConfigPath()
+	configDir := config.GetConfigDir()
 
 	var entries []config.Entry
 	var err error
 
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		if err := config.CreateDefaultConfig(configPath); err != nil {
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		if err := config.CreateDefaultConfig(configDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating default config: %v\n", err)
 			os.Exit(2)
 		}
 	}
 
-	entries, err = config.LoadConfig(configPath)
+	entries, err = config.LoadConfig(configDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(2)
 	}
 
 	if len(entries) == 0 {
-		fmt.Fprintf(os.Stderr, "No entries found in config file\n")
+		fmt.Fprintf(os.Stderr, "No entries found in config\n")
 		os.Exit(2)
 	}
 

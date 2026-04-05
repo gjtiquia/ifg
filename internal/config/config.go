@@ -3,8 +3,10 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -20,10 +22,10 @@ type Entry struct {
 	Command     string
 }
 
-func GetConfigPath() string {
+func GetConfigDir() string {
 	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
 	if xdgConfigHome != "" {
-		return filepath.Join(xdgConfigHome, "ifg", "config.sh")
+		return filepath.Join(xdgConfigHome, "ifg")
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -31,10 +33,50 @@ func GetConfigPath() string {
 		return ""
 	}
 
-	return filepath.Join(homeDir, ".ifg", "config.sh")
+	return filepath.Join(homeDir, ".ifg")
 }
 
-func LoadConfig(path string) ([]Entry, error) {
+func LoadConfig(dir string) ([]Entry, error) {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("config directory does not exist: %w", err)
+	}
+
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".sh") {
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			files = append(files, relPath)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk config directory: %w", err)
+	}
+
+	sort.Strings(files)
+
+	var entries []Entry
+	for _, file := range files {
+		fileEntries, err := parseFile(filepath.Join(dir, file))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", file, err)
+		}
+		entries = append(entries, fileEntries...)
+	}
+
+	return entries, nil
+}
+
+func parseFile(path string) ([]Entry, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
@@ -97,16 +139,19 @@ func LoadConfig(path string) ([]Entry, error) {
 	return entries, nil
 }
 
-func CreateDefaultConfig(path string) error {
-	if _, err := os.Stat(path); err == nil {
+func CreateDefaultConfig(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create config directory: %w", err)
+		}
+	}
+
+	defaultFile := filepath.Join(dir, "config.sh")
+	if _, err := os.Stat(defaultFile); err == nil {
 		return nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	file, err := os.Create(path)
+	file, err := os.Create(defaultFile)
 	if err != nil {
 		return fmt.Errorf("failed to create default config: %w", err)
 	}

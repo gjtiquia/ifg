@@ -6,17 +6,49 @@ import (
 	"testing"
 )
 
+func TestGetConfigDir(t *testing.T) {
+	t.Run("XDG_CONFIG_HOME set", func(t *testing.T) {
+		origXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+
+		os.Setenv("XDG_CONFIG_HOME", "/custom/config")
+		dir := GetConfigDir()
+
+		expected := filepath.Join("/custom/config", "ifg")
+		if dir != expected {
+			t.Errorf("expected %q, got %q", expected, dir)
+		}
+	})
+
+	t.Run("fallback to ~/.ifg", func(t *testing.T) {
+		origXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+		os.Unsetenv("XDG_CONFIG_HOME")
+
+		homeDir, _ := os.UserHomeDir()
+		xdgPath := filepath.Join(homeDir, ".config", "ifg")
+		if _, err := os.Stat(xdgPath); err == nil {
+			t.Skip("XDG config already exists")
+		}
+
+		dir := GetConfigDir()
+		expected := filepath.Join(homeDir, ".ifg")
+		if dir != expected {
+			t.Errorf("expected %q, got %q", expected, dir)
+		}
+	})
+}
+
 func TestLoadConfig(t *testing.T) {
 	t.Run("basic entry with title and description", func(t *testing.T) {
-		content := `# git commit
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "test.sh", `# git commit
 # commits staged changes
 # $ git commit -m "message"
 git commit -m "message"
-`
-		tmpFile := createTempFile(t, content)
-		defer os.Remove(tmpFile)
+`)
 
-		entries, err := LoadConfig(tmpFile)
+		entries, err := LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
@@ -43,12 +75,11 @@ git commit -m "message"
 	})
 
 	t.Run("entry without comments", func(t *testing.T) {
-		content := `git status
-`
-		tmpFile := createTempFile(t, content)
-		defer os.Remove(tmpFile)
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "test.sh", `git status
+`)
 
-		entries, err := LoadConfig(tmpFile)
+		entries, err := LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
@@ -66,16 +97,15 @@ git commit -m "message"
 	})
 
 	t.Run("multiple entries", func(t *testing.T) {
-		content := `# first command
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "test.sh", `# first command
 echo "first"
 
 # second command
 echo "second"
-`
-		tmpFile := createTempFile(t, content)
-		defer os.Remove(tmpFile)
+`)
 
-		entries, err := LoadConfig(tmpFile)
+		entries, err := LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
@@ -92,12 +122,10 @@ echo "second"
 		}
 	})
 
-	t.Run("empty file", func(t *testing.T) {
-		content := ``
-		tmpFile := createTempFile(t, content)
-		defer os.Remove(tmpFile)
+	t.Run("empty directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
 
-		entries, err := LoadConfig(tmpFile)
+		entries, err := LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
@@ -108,15 +136,14 @@ echo "second"
 	})
 
 	t.Run("entry with only comment lines (no command)", func(t *testing.T) {
-		content := `# this has no command
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "test.sh", `# this has no command
 # just comments
 
 echo "actual command"
-`
-		tmpFile := createTempFile(t, content)
-		defer os.Remove(tmpFile)
+`)
 
-		entries, err := LoadConfig(tmpFile)
+		entries, err := LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig failed: %v", err)
 		}
@@ -131,35 +158,99 @@ echo "actual command"
 	})
 }
 
-func TestGetConfigPath(t *testing.T) {
-	t.Run("XDG_CONFIG_HOME set", func(t *testing.T) {
-		origXDG := os.Getenv("XDG_CONFIG_HOME")
-		defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+func TestLoadConfigMultipleFiles(t *testing.T) {
+	t.Run("multiple files merged alphabetically", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "b.sh", `# second file
+echo "from b"
+`)
+		writeFile(t, tmpDir, "a.sh", `# first file
+echo "from a"
+`)
 
-		os.Setenv("XDG_CONFIG_HOME", "/custom/config")
-		path := GetConfigPath()
+		entries, err := LoadConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig failed: %v", err)
+		}
 
-		expected := filepath.Join("/custom/config", "ifg", "config.sh")
-		if path != expected {
-			t.Errorf("expected %q, got %q", expected, path)
+		if len(entries) != 2 {
+			t.Fatalf("expected 2 entries, got %d", len(entries))
+		}
+
+		if entries[0].Title != "first file" {
+			t.Errorf("expected first entry to be from a.sh, got %q", entries[0].Title)
+		}
+		if entries[1].Title != "second file" {
+			t.Errorf("expected second entry to be from b.sh, got %q", entries[1].Title)
 		}
 	})
+}
 
-	t.Run("fallback to ~/.ifg", func(t *testing.T) {
-		origXDG := os.Getenv("XDG_CONFIG_HOME")
-		defer os.Setenv("XDG_CONFIG_HOME", origXDG)
-		os.Unsetenv("XDG_CONFIG_HOME")
+func TestLoadConfigRecursive(t *testing.T) {
+	t.Run("subdirectories included", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "root.sh", `# root file
+echo "from root"
+`)
+		subDir := filepath.Join(tmpDir, "sub")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, subDir, "nested.sh", `# nested file
+echo "from nested"
+`)
 
-		homeDir, _ := os.UserHomeDir()
-		xdgPath := filepath.Join(homeDir, ".config", "ifg", "config.sh")
-		if _, err := os.Stat(xdgPath); err == nil {
-			t.Skip("XDG config already exists")
+		entries, err := LoadConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig failed: %v", err)
 		}
 
-		path := GetConfigPath()
-		expected := filepath.Join(homeDir, ".ifg", "config.sh")
-		if path != expected {
-			t.Errorf("expected %q, got %q", expected, path)
+		if len(entries) != 2 {
+			t.Fatalf("expected 2 entries, got %d", len(entries))
+		}
+
+		if entries[0].Title != "root file" {
+			t.Errorf("expected first entry to be from root.sh, got %q", entries[0].Title)
+		}
+		if entries[1].Title != "nested file" {
+			t.Errorf("expected second entry to be from sub/nested.sh, got %q", entries[1].Title)
+		}
+	})
+}
+
+func TestLoadConfigIgnoresNonShFiles(t *testing.T) {
+	t.Run("non-sh files ignored", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		writeFile(t, tmpDir, "valid.sh", `# valid entry
+echo "valid"
+`)
+		writeFile(t, tmpDir, "readme.txt", `# this should be ignored
+echo "ignored"
+`)
+		writeFile(t, tmpDir, "config", `# no extension
+echo "also ignored"
+`)
+
+		entries, err := LoadConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig failed: %v", err)
+		}
+
+		if len(entries) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(entries))
+		}
+
+		if entries[0].Title != "valid entry" {
+			t.Errorf("expected only valid.sh entry, got %q", entries[0].Title)
+		}
+	})
+}
+
+func TestLoadConfigNonexistentDirectory(t *testing.T) {
+	t.Run("nonexistent directory returns error", func(t *testing.T) {
+		_, err := LoadConfig("/nonexistent/path/to/config")
+		if err == nil {
+			t.Error("expected error for nonexistent directory")
 		}
 	})
 }
@@ -167,32 +258,40 @@ func TestGetConfigPath(t *testing.T) {
 func TestCreateDefaultConfig(t *testing.T) {
 	t.Run("creates config directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, ".config", "ifg", "config.sh")
+		configDir := filepath.Join(tmpDir, ".config", "ifg")
 
-		err := CreateDefaultConfig(configPath)
+		err := CreateDefaultConfig(configDir)
 		if err != nil {
 			t.Fatalf("CreateDefaultConfig failed: %v", err)
 		}
 
-		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			t.Error("config file was not created")
+		if _, err := os.Stat(configDir); os.IsNotExist(err) {
+			t.Error("config directory was not created")
+		}
+
+		defaultFile := filepath.Join(configDir, "config.sh")
+		if _, err := os.Stat(defaultFile); os.IsNotExist(err) {
+			t.Error("default config.sh was not created")
 		}
 	})
 
 	t.Run("does not overwrite existing config", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, "config.sh")
-
-		if err := os.WriteFile(configPath, []byte("existing content"), 0644); err != nil {
+		configDir := filepath.Join(tmpDir, "ifg")
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		defaultFile := filepath.Join(configDir, "config.sh")
+		if err := os.WriteFile(defaultFile, []byte("existing content"), 0644); err != nil {
 			t.Fatal(err)
 		}
 
-		err := CreateDefaultConfig(configPath)
+		err := CreateDefaultConfig(configDir)
 		if err != nil {
 			t.Fatalf("CreateDefaultConfig failed: %v", err)
 		}
 
-		content, err := os.ReadFile(configPath)
+		content, err := os.ReadFile(defaultFile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -201,19 +300,30 @@ func TestCreateDefaultConfig(t *testing.T) {
 			t.Error("CreateDefaultConfig should not overwrite existing config")
 		}
 	})
+
+	t.Run("does not error if directory exists but no default file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configDir := filepath.Join(tmpDir, "ifg")
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		err := CreateDefaultConfig(configDir)
+		if err != nil {
+			t.Fatalf("CreateDefaultConfig failed: %v", err)
+		}
+
+		defaultFile := filepath.Join(configDir, "config.sh")
+		if _, err := os.Stat(defaultFile); os.IsNotExist(err) {
+			t.Error("default config.sh should have been created")
+		}
+	})
 }
 
-func createTempFile(t *testing.T, content string) string {
+func writeFile(t *testing.T, dir, name, content string) {
 	t.Helper()
-	tmpFile, err := os.CreateTemp("", "ifg-config-test-*.sh")
-	if err != nil {
+	filePath := filepath.Join(dir, name)
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tmpFile.WriteString(content); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return tmpFile.Name()
 }
