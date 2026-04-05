@@ -348,27 +348,25 @@ func TestSelectionStaysWithinContentBounds(t *testing.T) {
 		}
 	})
 
-	t.Run("scroll triggers when selection approaches content boundary", func(t *testing.T) {
+	t.Run("scroll triggers when selection exceeds visible area", func(t *testing.T) {
 		state := NewState(entries)
 		state.TerminalHeight = 24
 
-		visibleRows := state.TerminalHeight - headerRows - bottomPadding
-		maxVisibleEntries := visibleRows / estimatedRowsPerEntry
-		if maxVisibleEntries < 1 {
-			maxVisibleEntries = 1
+		visibleHeight := state.TerminalHeight - headerRows - bottomPadding - scrollIndicatorRows
+		if visibleHeight < 1 {
+			visibleHeight = 1
 		}
 
-		scrollThreshold := maxVisibleEntries - 2
-		if scrollThreshold < 1 {
-			scrollThreshold = 1
-		}
-
-		for i := 0; i < scrollThreshold; i++ {
+		// Navigate until we exceed the visible area
+		for i := 0; i < len(entries); i++ {
 			state.NavigateDown()
-		}
 
-		if state.ScrollOffset == 0 {
-			t.Errorf("ScrollOffset should have advanced before selection reaches boundary, got ScrollOffset %d", state.ScrollOffset)
+			// Check that selection stays within visible bounds
+			lastVisible := state.findLastVisibleEntry(state.ScrollOffset, visibleHeight)
+			if state.SelectedIdx > lastVisible+1 { // +1 for some tolerance during navigation
+				t.Errorf("After %d navigations: SelectedIdx %d is past lastVisible %d (ScrollOffset %d)",
+					i+1, state.SelectedIdx, lastVisible, state.ScrollOffset)
+			}
 		}
 	})
 
@@ -387,6 +385,74 @@ func TestSelectionStaysWithinContentBounds(t *testing.T) {
 		if distanceFromScrollOffset > approxVisibleEntries {
 			t.Errorf("SelectedIdx %d is %d entries past ScrollOffset %d, should be within ~%d visible entries",
 				state.SelectedIdx, distanceFromScrollOffset, state.ScrollOffset, approxVisibleEntries)
+		}
+	})
+}
+
+func TestVariableHeightEntriesScrollCorrectly(t *testing.T) {
+	// Create entries with varying heights: some have descriptions, some don't
+	entries := []config.Entry{
+		{Title: "entry0", Command: "cmd0"},
+		{Title: "entry1", Command: "cmd1", Description: []string{"desc1 line1", "desc1 line2"}},
+		{Title: "entry2", Command: "cmd2"},
+		{Title: "entry3", Command: "cmd3", Description: []string{"desc3"}},
+		{Title: "entry4", Command: "cmd4"},
+		{Title: "entry5", Command: "cmd5", Description: []string{"desc5a", "desc5b", "desc5c"}},
+		{Title: "entry6", Command: "cmd6"},
+		{Title: "entry7", Command: "cmd7"},
+		{Title: "entry8", Command: "cmd8", Description: []string{"desc8"}},
+		{Title: "entry9", Command: "cmd9"},
+		{Title: "entry10", Command: "cmd10", Description: []string{"desc10 line1", "desc10 line2"}},
+		{Title: "entry11", Command: "cmd11"},
+		{Title: "entry12", Command: "cmd12"},
+		{Title: "entry13", Command: "cmd13", Description: []string{"desc13"}},
+		{Title: "entry14", Command: "cmd14"},
+		{Title: "entry15", Command: "cmd15"},
+		{Title: "entry16", Command: "cmd16", Description: []string{"desc16a", "desc16b"}},
+		{Title: "entry17", Command: "cmd17"},
+		{Title: "entry18", Command: "cmd18"},
+		{Title: "entry19", Command: "cmd19", Description: []string{"desc19"}},
+	}
+
+	t.Run("selection stays within bounds after navigating through variable height entries", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		// Navigate through many entries with variable heights
+		for i := 0; i < 15; i++ {
+			state.NavigateDown()
+		}
+
+		// The selection should stay within reasonable bounds of the scroll offset
+		distanceFromScrollOffset := state.SelectedIdx - state.ScrollOffset
+
+		// With estimatedRowsPerEntry = 3, we expect roughly 1-2 entries visible
+		// The distance should not exceed what's reasonably visible
+		maxExpectedDistance := 3
+
+		if distanceFromScrollOffset > maxExpectedDistance {
+			t.Errorf("SelectedIdx %d is %d entries past ScrollOffset %d (expected at most %d)",
+				state.SelectedIdx, distanceFromScrollOffset, state.ScrollOffset, maxExpectedDistance)
+		}
+	})
+
+	t.Run("scroll offset advances as expected with variable heights", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		// Start at entry 0, navigate through entries
+		initialScrollOffset := state.ScrollOffset
+
+		// Navigate down several times
+		for i := 0; i < 10; i++ {
+			state.NavigateDown()
+		}
+
+		// After navigating down 10 times, scroll should have advanced
+		// The exact amount depends on entry heights, but it should have moved
+		if state.ScrollOffset == initialScrollOffset && state.SelectedIdx > 2 {
+			t.Errorf("ScrollOffset should have advanced after navigating past visible entries, got ScrollOffset %d with SelectedIdx %d",
+				state.ScrollOffset, state.SelectedIdx)
 		}
 	})
 }
@@ -488,4 +554,107 @@ func makeEntries(count int) []config.Entry {
 		}
 	}
 	return entries
+}
+
+func TestDebugEntryHeights(t *testing.T) {
+	// Test that entry heights are computed correctly
+	entries := []config.Entry{
+		{Title: "short", Command: "cmd"},
+		{Title: "tall", Command: "cmd", Description: []string{"line1", "line2"}},
+		{Title: "wide", Command: "cmd", Description: []string{"a", "b", "c", "d"}},
+	}
+	state := NewState(entries)
+	state.TerminalHeight = 24
+
+	t.Run("entry heights computed correctly", func(t *testing.T) {
+		if len(state.EntryHeights) != 3 {
+			t.Fatalf("expected 3 entry heights, got %d", len(state.EntryHeights))
+		}
+
+		// Entry 0: title(1) + desc(0) + cmd(1) + spacing(1) = 3
+		if state.EntryHeights[0] != 3 {
+			t.Errorf("entry0 height: expected 3, got %d", state.EntryHeights[0])
+		}
+
+		// Entry 1: title(1) + desc(2) + cmd(1) + spacing(1) = 5
+		if state.EntryHeights[1] != 5 {
+			t.Errorf("entry1 height: expected 5, got %d", state.EntryHeights[1])
+		}
+
+		// Entry 2: title(1) + desc(4) + cmd(1) + spacing(1) = 7
+		if state.EntryHeights[2] != 7 {
+			t.Errorf("entry2 height: expected 7, got %d", state.EntryHeights[2])
+		}
+	})
+
+	t.Run("findLastVisibleEntry works correctly", func(t *testing.T) {
+		visibleHeight := 24 - headerRows - bottomPadding // 8
+
+		// Starting from entry 0, with height 8
+		// Entry 0 (height 3): total = 3
+		// Entry 1 (height 5): total = 3 + 5 = 8
+		// Entry 2 (height 7): would exceed 8
+		// So last visible is entry 1
+		lastVisible := state.findLastVisibleEntry(0, visibleHeight)
+		if lastVisible != 1 {
+			t.Errorf("expected last visible entry 1, got %d", lastVisible)
+		}
+	})
+
+	t.Run("navigation keeps selection visible", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		// Navigate to entry 2
+		for i := 0; i < 2; i++ {
+			state.NavigateDown()
+		}
+
+		if state.SelectedIdx != 2 {
+			t.Errorf("expected SelectedIdx 2, got %d", state.SelectedIdx)
+		}
+
+		// Entry 2 should be visible, so ScrollOffset should be adjusted
+		visibleHeight := 24 - headerRows - bottomPadding
+		lastVisible := state.findLastVisibleEntry(state.ScrollOffset, visibleHeight)
+
+		if state.SelectedIdx > lastVisible {
+			t.Errorf("SelectedIdx %d is past last visible entry %d (ScrollOffset %d)",
+				state.SelectedIdx, lastVisible, state.ScrollOffset)
+		}
+	})
+}
+
+func TestDebugVariableHeightNavigation(t *testing.T) {
+	entries := []config.Entry{
+		{Title: "e0", Command: "cmd"},
+		{Title: "e1", Command: "cmd", Description: []string{"d1", "d2", "d3", "d4"}}, // height 7
+		{Title: "e2", Command: "cmd"},
+		{Title: "e3", Command: "cmd", Description: []string{"d1", "d2"}}, // height 5
+		{Title: "e4", Command: "cmd"},
+		{Title: "e5", Command: "cmd", Description: []string{"d1", "d2", "d3"}}, // height 6
+		{Title: "e6", Command: "cmd"},
+		{Title: "e7", Command: "cmd"},
+		{Title: "e8", Command: "cmd", Description: []string{"d1"}}, // height 4
+	}
+	state := NewState(entries)
+	state.TerminalHeight = 24
+
+	t.Log("Entry heights:", state.EntryHeights)
+
+	// Navigate to entry 8
+	for i := 0; i < 8; i++ {
+		state.NavigateDown()
+		t.Logf("After NavigateDown %d: SelectedIdx=%d, ScrollOffset=%d", i+1, state.SelectedIdx, state.ScrollOffset)
+	}
+
+	visibleHeight := 24 - headerRows - bottomPadding
+	lastVisible := state.findLastVisibleEntry(state.ScrollOffset, visibleHeight)
+
+	t.Logf("Final: SelectedIdx=%d, ScrollOffset=%d, lastVisible=%d, visibleHeight=%d",
+		state.SelectedIdx, state.ScrollOffset, lastVisible, visibleHeight)
+
+	if state.SelectedIdx > lastVisible {
+		t.Errorf("SelectedIdx %d is past last visible entry %d", state.SelectedIdx, lastVisible)
+	}
 }

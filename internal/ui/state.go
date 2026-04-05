@@ -19,13 +19,14 @@ type State struct {
 	SelectedIdx    int
 	Entries        []config.Entry
 	Filtered       []config.Entry
+	EntryHeights   []int
 	TerminalHeight int
 	TerminalWidth  int
 	ScrollOffset   int
 }
 
 func NewState(entries []config.Entry) *State {
-	return &State{
+	state := &State{
 		Mode:         ModeInsert,
 		SearchBuf:    "",
 		CursorIdx:    0,
@@ -34,6 +35,8 @@ func NewState(entries []config.Entry) *State {
 		Filtered:     entries,
 		ScrollOffset: 0,
 	}
+	state.computeEntryHeights()
+	return state
 }
 
 func (s *State) UpdateSearch() {
@@ -45,6 +48,25 @@ func (s *State) UpdateSearch() {
 		}
 	}
 	s.ScrollOffset = 0
+	s.computeEntryHeights()
+}
+
+func (s *State) computeEntryHeights() {
+	s.EntryHeights = make([]int, len(s.Filtered))
+	for i, entry := range s.Filtered {
+		s.EntryHeights[i] = computeEntryHeight(entry)
+	}
+}
+
+func computeEntryHeight(entry config.Entry) int {
+	height := 0
+	if entry.Title != "" {
+		height++
+	}
+	height += len(entry.Description)
+	height++ // command line
+	height++ // spacing after entry
+	return height
 }
 
 func (s *State) AppendChar(ch rune) {
@@ -68,8 +90,16 @@ const (
 	headerRows          = headerTitleRows + headerPromptRows + headerSeparatorRows
 
 	bottomPadding         = 10
-	estimatedRowsPerEntry = 3
+	estimatedRowsPerEntry = 3 // Deprecated: kept for tests, not used in navigation
+	scrollIndicatorRows   = 2 // Scroll indicator + gap before it
 )
+
+func (s *State) NavigateDown() {
+	if s.SelectedIdx < len(s.Filtered)-1 {
+		s.SelectedIdx++
+		s.ensureSelectionVisible()
+	}
+}
 
 func (s *State) NavigateUp() {
 	if s.SelectedIdx > 0 {
@@ -80,25 +110,34 @@ func (s *State) NavigateUp() {
 	}
 }
 
-func (s *State) NavigateDown() {
-	if s.SelectedIdx < len(s.Filtered)-1 {
-		s.SelectedIdx++
-		visibleHeight := s.TerminalHeight - headerRows - bottomPadding
-		if visibleHeight < 1 {
-			visibleHeight = 1
-		}
-		maxVisibleEntries := visibleHeight / estimatedRowsPerEntry
-		if maxVisibleEntries < 1 {
-			maxVisibleEntries = 1
-		}
-		// Reserve one entry worth of space for scroll indicator
-		if maxVisibleEntries > 1 {
-			maxVisibleEntries -= 1
-		}
-		if s.SelectedIdx >= s.ScrollOffset+maxVisibleEntries {
-			s.ScrollOffset = s.SelectedIdx - maxVisibleEntries + 1
-		}
+func (s *State) ensureSelectionVisible() {
+	visibleHeight := s.TerminalHeight - headerRows - bottomPadding - scrollIndicatorRows
+	if visibleHeight < 1 {
+		visibleHeight = 1
 	}
+
+	for s.ScrollOffset < s.SelectedIdx {
+		lastVisible := s.findLastVisibleEntry(s.ScrollOffset, visibleHeight)
+		if lastVisible >= s.SelectedIdx {
+			break
+		}
+		s.ScrollOffset++
+	}
+}
+
+func (s *State) findLastVisibleEntry(startIdx, visibleHeight int) int {
+	row := 0
+	for i := startIdx; i < len(s.EntryHeights); i++ {
+		entryHeight := s.EntryHeights[i]
+		if row+entryHeight > visibleHeight {
+			if i == startIdx {
+				return startIdx
+			}
+			return i - 1
+		}
+		row += entryHeight
+	}
+	return len(s.EntryHeights) - 1
 }
 
 func (s *State) SwitchToNormal() {

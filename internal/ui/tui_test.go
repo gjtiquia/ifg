@@ -219,6 +219,127 @@ func TestRenderScrollIndicatorDoesNotOverlapEntries(t *testing.T) {
 	}
 }
 
+func TestVariableHeightEntriesStayWithinBounds(t *testing.T) {
+	// Create entries with varying heights
+	entries := []config.Entry{
+		{Title: "short", Command: "cmd"},
+		{Title: "tall", Command: "cmd", Description: []string{"line1", "line2", "line3", "line4"}},
+		{Title: "short", Command: "cmd"},
+		{Title: "medium", Command: "cmd", Description: []string{"line1", "line2"}},
+		{Title: "short", Command: "cmd"},
+		{Title: "tall", Command: "cmd", Description: []string{"line1", "line2", "line3"}},
+		{Title: "short", Command: "cmd"},
+		{Title: "short", Command: "cmd"},
+		{Title: "medium", Command: "cmd", Description: []string{"line1"}},
+		{Title: "short", Command: "cmd"},
+		{Title: "tall", Command: "cmd", Description: []string{"line1", "line2", "line3", "line5"}},
+		{Title: "short", Command: "cmd"},
+		{Title: "short", Command: "cmd"},
+		{Title: "medium", Command: "cmd", Description: []string{"line1", "line2"}},
+		{Title: "short", Command: "cmd"},
+	}
+
+	t.Run("selected entry visible after navigating through variable height entries", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 24
+
+		t.Logf("Entry heights: %v", state.EntryHeights)
+
+		// Navigate through multiple variable-height entries
+		for i := 0; i < 8; i++ {
+			state.NavigateDown()
+			t.Logf("After NavigateDown %d: SelectedIdx=%d, ScrollOffset=%d", i+1, state.SelectedIdx, state.ScrollOffset)
+		}
+
+		// Render and check if selected entry is visible
+		screen := NewMockScreen(80, state.TerminalHeight)
+		Render(state, screen)
+
+		// Debug: print all rows
+		for y := 0; y < state.TerminalHeight; y++ {
+			rowContent := strings.TrimSpace(screen.RowAt(y))
+			if rowContent != "" {
+				t.Logf("Row %d: %q", y, rowContent)
+			}
+		}
+
+		// The selected entry should be visible in the rendered output
+		selectedEntry := entries[state.SelectedIdx]
+		selectedMarker := "> # " + selectedEntry.Title
+
+		found := false
+		for y := 0; y < state.TerminalHeight; y++ {
+			if strings.Contains(screen.RowAt(y), selectedMarker) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			t.Errorf("Selected entry %d (title: %q) not visible in render after navigating",
+				state.SelectedIdx, selectedEntry.Title)
+		}
+	})
+
+	t.Run("entries do not overflow past content area with variable heights", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 20 // Smaller terminal to force scrolling
+
+		// Navigate to middle of list
+		for i := 0; i < 7; i++ {
+			state.NavigateDown()
+		}
+
+		screen := NewMockScreen(80, state.TerminalHeight)
+		Render(state, screen)
+
+		maxRow := state.TerminalHeight - bottomPadding
+
+		// Check no entries rendered past content end
+		for y := maxRow; y < state.TerminalHeight; y++ {
+			rowContent := screen.RowAt(y)
+			if strings.Contains(rowContent, "#") || strings.Contains(rowContent, "> ") {
+				t.Errorf("Entry content found in bottom padding area at row %d: %q", y, rowContent)
+			}
+		}
+	})
+
+	t.Run("scroll indicator not overlapping with entries after extensive navigation", func(t *testing.T) {
+		state := NewState(entries)
+		state.TerminalHeight = 22
+
+		// Navigate through many variable-height entries
+		for i := 0; i < 12; i++ {
+			state.NavigateDown()
+		}
+
+		screen := NewMockScreen(80, state.TerminalHeight)
+		Render(state, screen)
+
+		scrollIndicatorRow := -1
+		for y := 0; y < state.TerminalHeight; y++ {
+			rowContent := screen.RowAt(y)
+			if strings.Contains(rowContent, "[") && strings.Contains(rowContent, " of ") {
+				scrollIndicatorRow = y
+				break
+			}
+		}
+
+		if scrollIndicatorRow == -1 {
+			t.Fatalf("scroll indicator should be visible after navigation")
+		}
+
+		scrollRowContent := strings.TrimSpace(screen.RowAt(scrollIndicatorRow))
+		hasEntryMarker := strings.Contains(scrollRowContent, "> ") ||
+			(strings.Contains(scrollRowContent, "#") && !strings.HasPrefix(scrollRowContent, "["))
+
+		if hasEntryMarker {
+			t.Errorf("After navigation, scroll indicator overlaps with entry at row %d: %q",
+				scrollIndicatorRow, scrollRowContent)
+		}
+	})
+}
+
 func findRowContaining(screen *MockScreen, text string) int {
 	for y := 0; y < screen.height; y++ {
 		if strings.Contains(screen.RowAt(y), text) {
