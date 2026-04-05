@@ -926,6 +926,634 @@ func TestDebugVariableHeightNavigation(t *testing.T) {
 	}
 }
 
+func TestMoveWordForward(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("from start of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 0
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 2
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from end of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 4
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from space between words", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 5
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 5
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 5 {
+			t.Errorf("expected CursorIdx 5, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWordForward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("skips punctuation", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello.world"
+		state.CursorIdx = 0
+
+		state.MoveWordForward()
+
+		// 'w' moves to start of next word, not end
+		// "hello.world" - from position 0, skip "hello" (word), then "." (non-word), land at "world" start
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6 (start of 'world'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("multiple words with spaces", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "foo bar baz"
+		state.CursorIdx = 0
+
+		state.MoveWordForward()
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+
+		state.MoveWordForward()
+		if state.CursorIdx != 8 {
+			t.Errorf("expected CursorIdx 8, got %d", state.CursorIdx)
+		}
+
+		state.MoveWordForward()
+		if state.CursorIdx != 11 {
+			t.Errorf("expected CursorIdx 11, got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestMoveWORDForward(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("treats punctuation as part of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello.world foo"
+		state.CursorIdx = 0
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 12 {
+			t.Errorf("expected CursorIdx 12 (start of 'foo'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from start of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 0
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 2
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 3
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 5 {
+			t.Errorf("expected CursorIdx 5, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("multiple spaces between WORDs", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "foo   bar"
+		state.CursorIdx = 0
+
+		state.MoveWORDForward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestMoveWordBackward(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("from end of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 5
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 8
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 11
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from space between words", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 5
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at beginning of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 0
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("skips punctuation", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello.world"
+		state.CursorIdx = 11
+
+		state.MoveWordBackward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("multiple words backward", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "foo bar baz"
+		state.CursorIdx = 11
+
+		state.MoveWordBackward()
+		if state.CursorIdx != 8 {
+			t.Errorf("expected CursorIdx 8, got %d", state.CursorIdx)
+		}
+
+		state.MoveWordBackward()
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+
+		state.MoveWordBackward()
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestMoveWORDBackward(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("treats punctuation as part of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello.world foo"
+		state.CursorIdx = 15
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 12 {
+			t.Errorf("expected CursorIdx 12 (start of 'foo'), got %d", state.CursorIdx)
+		}
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0 (start of 'hello.world'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from end of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 5
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 8
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at beginning of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 0
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("multiple spaces between WORDs", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "foo   bar"
+		state.CursorIdx = 9
+
+		state.MoveWORDBackward()
+
+		if state.CursorIdx != 6 {
+			t.Errorf("expected CursorIdx 6, got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestMoveWordEnd(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("from start of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 0
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4 (end of 'hello'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 2
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from end of word moves to next word end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 4
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 10 {
+			t.Errorf("expected CursorIdx 10 (end of 'world'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from space between words", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 5
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 10 {
+			t.Errorf("expected CursorIdx 10, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 4
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("skips punctuation then stops at word end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "...hello"
+		state.CursorIdx = 0
+
+		state.MoveWordEnd()
+
+		if state.CursorIdx != 7 {
+			t.Errorf("expected CursorIdx 7 (end of 'hello'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("moves to end of single char word", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "a b c"
+		state.CursorIdx = 0
+
+		state.MoveWordEnd()
+
+		// 'e' moves to end of word. From 'a' at 0, it goes to end of next word.
+		// "a b c" - positions: 0='a', 1=' ', 2='b', 3=' ', 4='c'
+		// From 0: skip ' ' (non-word), then 'b' is word, end at 'b' (position 2)
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2 (end of 'b'), got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestMoveWORDEnd(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("treats punctuation as part of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello.world foo"
+		state.CursorIdx = 0
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 10 {
+			t.Errorf("expected CursorIdx 10 (end of 'hello.world'), got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from start of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 0
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from middle of WORD", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 2
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from end of WORD moves to next WORD end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello world"
+		state.CursorIdx = 4
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 10 {
+			t.Errorf("expected CursorIdx 10, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("at end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "hello"
+		state.CursorIdx = 4
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveWORDEnd()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("multiple spaces between WORDs", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "foo   bar"
+		state.CursorIdx = 2
+
+		state.MoveWORDEnd()
+
+		// 'E' from position 2 (end of 'foo') goes to end of next WORD
+		// "foo   bar" - positions: 0='f',1='o',2='o',3=' ',4=' ',5=' ',6='b',7='a',8='r'
+		// From 2: skip spaces, then move through 'bar', end at position 8
+		if state.CursorIdx != 8 {
+			t.Errorf("expected CursorIdx 8 (end of 'bar'), got %d", state.CursorIdx)
+		}
+	})
+}
+
+func TestIsWordChar(t *testing.T) {
+	tests := []struct {
+		char     rune
+		expected bool
+	}{
+		{'a', true},
+		{'z', true},
+		{'A', true},
+		{'Z', true},
+		{'0', true},
+		{'9', true},
+		{'_', true},
+		{' ', false},
+		{'.', false},
+		{'-', false},
+		{'@', false},
+		{'\n', false},
+		{'\t', false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.char), func(t *testing.T) {
+			result := isWordChar(tt.char)
+			if result != tt.expected {
+				t.Errorf("isWordChar(%q) = %v, expected %v", tt.char, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsSpace(t *testing.T) {
+	tests := []struct {
+		char     rune
+		expected bool
+	}{
+		{' ', true},
+		{'\t', true},
+		{'\n', true},
+		{'\r', true},
+		{'a', false},
+		{'0', false},
+		{'_', false},
+		{'.', false},
+		{'-', false},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.char), func(t *testing.T) {
+			result := isSpace(tt.char)
+			if result != tt.expected {
+				t.Errorf("isSpace(%q) = %v, expected %v", tt.char, result, tt.expected)
+			}
+		})
+	}
+}
+
 func makeEntries(count int) []config.Entry {
 	entries := make([]config.Entry, count)
 	for i := 0; i < count; i++ {
