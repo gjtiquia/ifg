@@ -119,7 +119,7 @@ func main() {
 }
 
 func runInputLoop(state *ui.State, term *ui.Terminal) string {
-	ui.Render(state, term.Screen())
+	ui.Render(state, term.WrappedScreen())
 
 	for {
 		key := ui.ReadKey(term.Screen())
@@ -189,6 +189,6 @@ func runInputLoop(state *ui.State, term *ui.Terminal) string {
 			}
 		}
 
-		ui.Render(state, term.Screen())
+		ui.Render(state, term.WrappedScreen())
 	}
 }

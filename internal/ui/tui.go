@@ -32,13 +32,17 @@ func (t *Terminal) Screen() tcell.Screen {
 	return t.screen
 }
 
-func Render(state *State, screen tcell.Screen) {
+func (t *Terminal) WrappedScreen() Screen {
+	return NewTcellScreen(t.screen)
+}
+
+func Render(state *State, screen Screen) {
 	screen.Clear()
 
 	row := 0
 
 	header := "ifg - [i] [f]or[g]ot"
-	drawText(screen, 0, row, header, tcell.StyleDefault.Bold(true))
+	drawText(screen, 0, row, header, Style{Bold: true})
 	row += 2
 
 	prompt := "type to search: "
@@ -46,36 +50,34 @@ func Render(state *State, screen tcell.Screen) {
 		prompt = "search results for: "
 	}
 
-	// Draw search buffer with cursor (both Insert and Normal modes)
 	if len(state.SearchBuf) > 0 {
-		drawText(screen, 0, row, prompt, tcell.StyleDefault)
+		drawText(screen, 0, row, prompt, NewStyle())
 		x := len(prompt)
 
 		for i, ch := range state.SearchBuf {
 			if i == state.CursorIdx {
-				screen.SetContent(x+i, row, ch, nil, tcell.StyleDefault.Reverse(true))
+				screen.SetContent(x+i, row, ch, Style{Reverse: true})
 			} else {
-				screen.SetContent(x+i, row, ch, nil, tcell.StyleDefault)
+				screen.SetContent(x+i, row, ch, NewStyle())
 			}
 		}
 
 		if state.CursorIdx == len(state.SearchBuf) {
-			screen.SetContent(x+state.CursorIdx, row, ' ', nil, tcell.StyleDefault.Reverse(true))
+			screen.SetContent(x+state.CursorIdx, row, ' ', Style{Reverse: true})
 		}
 	} else {
-		// Empty buffer
-		drawText(screen, 0, row, prompt, tcell.StyleDefault)
+		drawText(screen, 0, row, prompt, NewStyle())
 		if state.Mode == ModeInsert {
-			screen.SetContent(len(prompt), row, ' ', nil, tcell.StyleDefault.Reverse(true))
+			screen.SetContent(len(prompt), row, ' ', Style{Reverse: true})
 		}
 	}
 	row += 2
 
-	drawText(screen, 0, row, "---", tcell.StyleDefault)
+	drawText(screen, 0, row, "---", NewStyle())
 	row += 2
 
 	if len(state.Filtered) == 0 {
-		drawText(screen, 0, row, "No results found", tcell.StyleDefault.Dim(true))
+		drawText(screen, 0, row, "No results found", Style{Dim: true})
 		screen.Show()
 		return
 	}
@@ -96,9 +98,9 @@ func Render(state *State, screen tcell.Screen) {
 		lastVisibleIdx = entryIdx
 
 		isSelected := entryIdx == state.SelectedIdx
-		style := tcell.StyleDefault
+		style := NewStyle()
 		if isSelected {
-			style = style.Bold(true)
+			style.Bold = true
 		}
 
 		prefix := "  "
@@ -160,21 +162,14 @@ func Render(state *State, screen tcell.Screen) {
 			scrollText += string(rune('0' + total%10))
 		}
 		scrollText += "]"
-		drawText(screen, 0, maxRow-1, scrollText, tcell.StyleDefault.Dim(true))
+		drawText(screen, 0, maxRow-1, scrollText, Style{Dim: true})
 	}
 
 	screen.Show()
 }
 
-func drawText(screen tcell.Screen, x, y int, text string, style tcell.Style) {
+func drawText(screen Screen, x, y int, text string, style Style) {
 	for i, ch := range text {
-		screen.SetContent(x+i, y, ch, nil, style)
+		screen.SetContent(x+i, y, ch, style)
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
