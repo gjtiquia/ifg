@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 
@@ -51,53 +52,52 @@ func printHelp() {
 }
 
 func main() {
-	// Check for shell integration flags
+	command, err := run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if command != "" {
+		fmt.Println(command)
+	}
+}
+
+func run() (string, error) {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-
 		case "--sh", "--bash", "--zsh":
 			fmt.Print(shellWrapper)
-			os.Exit(0)
-
+			return "", nil
 		case "--help", "-h":
 			printHelp()
-			os.Exit(0)
-
+			return "", nil
 		default:
-			fmt.Fprintf(os.Stderr, "Unknown flag: %s\n\n", os.Args[1])
 			printHelp()
-			os.Exit(1)
+			return "", errors.New("unknown flag: " + os.Args[1])
 		}
 	}
 
 	config.SetDefaultConfig(defaultConfigContent)
 	configDir := config.GetConfigDir()
 
-	var entries []config.Entry
-	var err error
-
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		if err := config.CreateDefaultConfig(configDir); err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating default config: %v\n", err)
-			os.Exit(2)
+			return "", fmt.Errorf("creating default config: %w", err)
 		}
 	}
 
-	entries, err = config.LoadConfig(configDir)
+	entries, err := config.LoadConfig(configDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-		os.Exit(2)
+		return "", fmt.Errorf("loading config: %w", err)
 	}
 
 	if len(entries) == 0 {
-		fmt.Fprintf(os.Stderr, "No entries found in config\n")
-		os.Exit(2)
+		return "", errors.New("no entries found in config")
 	}
 
 	term, err := ui.SetupTerminal()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting up terminal: %v\n", err)
-		os.Exit(2)
+		return "", fmt.Errorf("setting up terminal: %w", err)
 	}
 	defer term.Restore()
 
@@ -107,15 +107,11 @@ func main() {
 	state.TerminalHeight = height
 
 	selectedCommand := runInputLoop(state, term)
-
-	term.Restore()
-
-	if selectedCommand != "" {
-		fmt.Println(selectedCommand)
-		os.Exit(0)
+	if selectedCommand == "" {
+		return "", errors.New("no selection")
 	}
 
-	os.Exit(1)
+	return selectedCommand, nil
 }
 
 func runInputLoop(state *ui.State, term *ui.Terminal) string {
