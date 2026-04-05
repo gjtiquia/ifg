@@ -123,6 +123,8 @@ go install .
 
 ### testing shell integration
 
+if you do not want to "polute" the global install, you may test it this way
+
 ```bash
 # builds binary at project root named `ifg`
 go build .
