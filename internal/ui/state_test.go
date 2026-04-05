@@ -545,15 +545,282 @@ func TestBottomPaddingRespected(t *testing.T) {
 	})
 }
 
-func makeEntries(count int) []config.Entry {
-	entries := make([]config.Entry, count)
-	for i := 0; i < count; i++ {
-		entries[i] = config.Entry{
-			Title:   "command",
-			Command: "cmd",
+func TestAppendChar(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("append to empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.AppendChar('a')
+
+		if state.SearchBuf != "a" {
+			t.Errorf("expected SearchBuf 'a', got %q", state.SearchBuf)
 		}
-	}
-	return entries
+		if state.CursorIdx != 1 {
+			t.Errorf("expected CursorIdx 1, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("append to end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 3
+
+		state.AppendChar('d')
+
+		if state.SearchBuf != "abcd" {
+			t.Errorf("expected SearchBuf 'abcd', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 4 {
+			t.Errorf("expected CursorIdx 4, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("insert in middle of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "acd"
+		state.CursorIdx = 1
+
+		state.AppendChar('b')
+
+		if state.SearchBuf != "abcd" {
+			t.Errorf("expected SearchBuf 'abcd', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("insert at beginning of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "bcd"
+		state.CursorIdx = 0
+
+		state.AppendChar('a')
+
+		if state.SearchBuf != "abcd" {
+			t.Errorf("expected SearchBuf 'abcd', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 1 {
+			t.Errorf("expected CursorIdx 1, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("updates filtered results", func(t *testing.T) {
+		entries := []config.Entry{
+			{Command: "git"},
+			{Command: "docker"},
+		}
+		state := NewState(entries)
+
+		state.AppendChar('g')
+
+		if len(state.Filtered) != 1 {
+			t.Errorf("expected 1 filtered result, got %d", len(state.Filtered))
+		}
+		if state.Filtered[0].Command != "git" {
+			t.Errorf("expected filtered result 'git', got %q", state.Filtered[0].Command)
+		}
+	})
+}
+
+func TestDeleteChar(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("delete from empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.DeleteChar()
+
+		if state.SearchBuf != "" {
+			t.Errorf("expected SearchBuf '', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("delete from beginning of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 0
+
+		state.DeleteChar()
+
+		if state.SearchBuf != "abc" {
+			t.Errorf("expected SearchBuf unchanged 'abc', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("delete from middle of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abcd"
+		state.CursorIdx = 2
+
+		state.DeleteChar()
+
+		if state.SearchBuf != "acd" {
+			t.Errorf("expected SearchBuf 'acd', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 1 {
+			t.Errorf("expected CursorIdx 1, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("delete from end of buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 3
+
+		state.DeleteChar()
+
+		if state.SearchBuf != "ab" {
+			t.Errorf("expected SearchBuf 'ab', got %q", state.SearchBuf)
+		}
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("updates filtered results", func(t *testing.T) {
+		entries := []config.Entry{
+			{Command: "git"},
+			{Command: "docker"},
+		}
+		state := NewState(entries)
+		state.SearchBuf = "gi"
+		state.CursorIdx = 2
+		state.UpdateSearch()
+
+		state.DeleteChar()
+
+		if state.SearchBuf != "g" {
+			t.Errorf("expected SearchBuf 'g', got %q", state.SearchBuf)
+		}
+	})
+}
+
+func TestMoveCursorLeft(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("move left from beginning", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 0
+
+		state.MoveCursorLeft()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("move left from middle", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 2
+
+		state.MoveCursorLeft()
+
+		if state.CursorIdx != 1 {
+			t.Errorf("expected CursorIdx 1, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("move left from end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 3
+
+		state.MoveCursorLeft()
+
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("does not change search buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 2
+
+		state.MoveCursorLeft()
+
+		if state.SearchBuf != "abc" {
+			t.Errorf("expected SearchBuf 'abc', got %q", state.SearchBuf)
+		}
+	})
+}
+
+func TestMoveCursorRight(t *testing.T) {
+	entries := makeEntries(5)
+
+	t.Run("move right from beginning", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 0
+
+		state.MoveCursorRight()
+
+		if state.CursorIdx != 1 {
+			t.Errorf("expected CursorIdx 1, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("move right from middle", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 1
+
+		state.MoveCursorRight()
+
+		if state.CursorIdx != 2 {
+			t.Errorf("expected CursorIdx 2, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("move right from end", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 3
+
+		state.MoveCursorRight()
+
+		if state.CursorIdx != 3 {
+			t.Errorf("expected CursorIdx 3, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("move right with empty buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = ""
+		state.CursorIdx = 0
+
+		state.MoveCursorRight()
+
+		if state.CursorIdx != 0 {
+			t.Errorf("expected CursorIdx 0, got %d", state.CursorIdx)
+		}
+	})
+
+	t.Run("does not change search buffer", func(t *testing.T) {
+		state := NewState(entries)
+		state.SearchBuf = "abc"
+		state.CursorIdx = 0
+
+		state.MoveCursorRight()
+
+		if state.SearchBuf != "abc" {
+			t.Errorf("expected SearchBuf 'abc', got %q", state.SearchBuf)
+		}
+	})
 }
 
 func TestDebugEntryHeights(t *testing.T) {
@@ -657,4 +924,15 @@ func TestDebugVariableHeightNavigation(t *testing.T) {
 	if state.SelectedIdx > lastVisible {
 		t.Errorf("SelectedIdx %d is past last visible entry %d", state.SelectedIdx, lastVisible)
 	}
+}
+
+func makeEntries(count int) []config.Entry {
+	entries := make([]config.Entry, count)
+	for i := 0; i < count; i++ {
+		entries[i] = config.Entry{
+			Title:   "command",
+			Command: "cmd",
+		}
+	}
+	return entries
 }
