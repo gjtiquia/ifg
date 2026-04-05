@@ -175,6 +175,8 @@ func runInputLoop(state *ui.State, term *ui.Terminal) string {
 					state.SwitchToInsert("after")
 				case 'A':
 					state.SwitchToInsert("end")
+				case 'q', 'Q':
+					return ""
 				}
 			case ui.KeyUp:
 				state.NavigateUp()
