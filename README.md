@@ -38,6 +38,8 @@ dead-simple config format with fuzzy search
 
 ## installation
 
+> only Linux and MacOS are supported for now. Windows is still a work-in-progress. WSL should be good tho.
+
 ### go install (recommended)
 
 prerequisite: [Go](https://go.dev/doc/install)
@@ -117,6 +119,7 @@ ifg
 you can also serve `ifg` on the web,
 accessible via browser or `curl`,
 returning html or plain text respectively,
+
 its like having a cli cheatsheet readily available whenever you need
 
 ```bash
@@ -131,45 +134,6 @@ curl -L your-ifg-domain.com/your-query
 ```
 
 ## config
-
-### config directory location
-- if `XDG_CONFIG_HOME` is set: `$XDG_CONFIG_HOME/ifg/`
-- if `XDG_CONFIG_HOME` is not set: `~/.ifg/`
-
-if no config directory exists,
-the config directory will be automatically created on first running `ifg`,
-with a default config called `config.sh`
-
-### config directory structure
-
-can be a dead simple single file config
-
-```
-~/.ifg/
-└── config.sh
-```
-
-or a collection of files, organized to your own liking.
-
-all `*.sh` files in the config directory are read, sorted alphabetically by path:
-
-```
-~/.ifg/
-├── git.sh
-├── docker.sh
-├── personal/
-│   └── scripts.sh
-└── work/
-    ├── 01-ssh.sh
-    └── 02-deploy.sh
-```
-
-number prefixes are optional.
-use them for custom ordering.
-
-subdirectories are supported.
-
-feel free to check out [my personal config](https://github.com/gjtiquia/.ifg) for more examples
 
 ### config format
 
@@ -188,6 +152,52 @@ echo "titles and descriptions are overrated"
 ```
 
 check out the default [`/shell/config.sh`](./shell/config.sh) for a more concrete example
+
+### config directory location
+
+if no config directory exists,
+the config directory will be automatically created on first running `ifg`,
+with a default config called `config.sh`
+
+#### Linux and MacOS
+- if `XDG_CONFIG_HOME` is set: `$XDG_CONFIG_HOME/ifg/`
+- if `XDG_CONFIG_HOME` is not set: `~/.ifg/`
+
+#### Windows
+```
+TODO
+```
+
+### config directory structure
+
+can be a dead simple single file config
+
+```
+~/.ifg/
+└── config.sh
+```
+
+or a collection of files, organized to your own liking.
+
+```
+~/.ifg/
+├── git.sh
+├── docker.sh
+├── personal/
+│   └── scripts.sh
+└── work/
+    ├── 01-ssh.sh
+    └── 02-deploy.sh
+```
+
+all `*.sh` files in the config directory are read, sorted alphabetically by path
+
+number prefixes are optional.
+use them for custom ordering.
+
+subdirectories are supported.
+
+feel free to check out [my personal config](https://github.com/gjtiquia/.ifg) for a real-life example
 
 ## development
 
