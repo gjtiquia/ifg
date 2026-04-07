@@ -136,6 +136,8 @@ subdirectories are supported.
 
 ### config format
 
+its just bash comments and one-liners. entries are seperated by empty lines
+
 ```bash
 # an optional title
 # an optional description
