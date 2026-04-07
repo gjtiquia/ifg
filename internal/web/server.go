@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gjtiquia/ifg/internal/config"
 	"github.com/gjtiquia/ifg/internal/search"
@@ -33,7 +34,62 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(addr, nil)
 }
 
+func isCLIRequest(r *http.Request) bool {
+	ua := r.Header.Get("User-Agent")
+	return strings.Contains(ua, "curl/") ||
+		strings.Contains(ua, "Wget/") ||
+		strings.Contains(ua, "HTTPie/")
+}
+
+func formatEntriesText(entries []config.Entry) string {
+	var b strings.Builder
+	for _, e := range entries {
+		if e.Title != "" && e.Title != e.Command {
+			b.WriteString("# ")
+			b.WriteString(e.Title)
+			b.WriteString("\n")
+		}
+		for _, desc := range e.Description {
+			b.WriteString("# ")
+			b.WriteString(desc)
+			b.WriteString("\n")
+		}
+		b.WriteString(e.Command)
+		b.WriteString("\n\n")
+	}
+	return b.String()
+}
+
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if path != "/" {
+		path = strings.TrimPrefix(path, "/")
+	} else {
+		path = ""
+	}
+
+	if isCLIRequest(r) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if path == "" {
+			w.Write([]byte(formatEntriesText(s.Entries)))
+			return
+		}
+		query := strings.ReplaceAll(path, "-", " ")
+		filtered := search.Match(s.Entries, query)
+		if len(filtered) == 0 {
+			fmt.Fprintf(w, "# No commands found for: %s\n", path)
+			return
+		}
+		w.Write([]byte(formatEntriesText(filtered)))
+		return
+	}
+
+	if path != "" {
+		query := strings.ReplaceAll(path, "-", " ")
+		http.Redirect(w, r, "/?q="+query, http.StatusFound)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(indexHTML))
 }
@@ -71,6 +127,16 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		if selectedIdx < 0 {
 			selectedIdx = 0
 		}
+	}
+
+	if isCLIRequest(r) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if len(filtered) == 0 {
+			fmt.Fprintf(w, "# No commands found for: %s\n", query)
+			return
+		}
+		w.Write([]byte(formatEntriesText(filtered)))
+		return
 	}
 
 	entriesJSON := make([]entryJSON, len(filtered))
