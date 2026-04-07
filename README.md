@@ -78,7 +78,7 @@ go install github.com/gjtiquia/ifg@latest
 <summary><code>Command 'ifg' not found</code></summary>
 
 ```bash
-# make sure this is in your .bashrc / .zshrc
+# (Linux and MacOS) make sure this is in your .bashrc / .zshrc
 export PATH=$PATH:$HOME/go/bin
 ```
 </details>
