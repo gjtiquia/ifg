@@ -116,6 +116,15 @@ with a default config called `config.sh`
 
 ### config directory structure
 
+can be a dead simple single file config
+
+```
+~/.ifg/
+└── config.sh
+```
+
+or a collection of files, organized to your own liking.
+
 all `*.sh` files in the config directory are read, sorted alphabetically by path:
 
 ```
