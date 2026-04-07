@@ -107,6 +107,9 @@ ifg
 
 # vim keys are supported as well
 # escape and navigate with j/k. go back to insert mode with i/I/a/A
+
+# no shell integration: command is simply printed out
+# with shell integration: command is added to command history. press UP to access (and edit), enter to run.
 ```
 
 ### web server (experimental)
