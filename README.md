@@ -239,6 +239,8 @@ some thoughts
   - very easy to do "integration tests" via unit tests
 - while claude and gpt are amazing, GLM 5 is very much good enough for me
 
+(inspired by [ghostty's ai usage policy](https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md))
+
 ## license
 
 MIT
