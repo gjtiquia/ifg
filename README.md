@@ -36,6 +36,32 @@ dead-simple config format with fuzzy search
 
 `fzf`, `telescope.nvim`, `⌘K`, `Ctrl+P` inspired UX
 
+### FAQ
+
+<details>
+<summary>why not <code>tldr</code>?</summary>
+
+[tldr](https://tldr.sh/) is an amazing project, 
+works out-of-the-box, 
+you are productive with it immediately
+
+however, `ifg` has different goals compared to `tldr`
+
+`tldr` is about simplifying `man` pages
+
+`ifg` is about curating your own personal library of commands
+
+i personally used (and still use) `tldr`, its great!
+
+but i also have my own personal notes about certain commands, my own cheatsheet, stored in my personal [obsidian](https://obsidian.md/) vault
+
+in fact, it's precisely because i find myself constantly switching between the terminal and obsidian, which is why `ifg` was born
+
+with an additional bonus that i can open-source and share to the world [my curated library of commands with my personal notes](https://github.com/gjtiquia/.ifg), 
+without exposing my entire private obsidian vault
+
+</details>
+
 ## installation
 
 > only Linux and MacOS are supported for now. Windows is still a work-in-progress. WSL should be good tho.
@@ -49,7 +75,7 @@ go install github.com/gjtiquia/ifg@latest
 ```
 
 <details>
-    <summary><code>Command 'ifg' not found</code></summary>
+<summary><code>Command 'ifg' not found</code></summary>
 
 ```bash
 # make sure this is in your .bashrc / .zshrc
@@ -58,7 +84,7 @@ export PATH=$PATH:$HOME/go/bin
 </details>
 
 <details>
-    <summary>other useful commands:</summary>
+<summary>other useful commands:</summary>
 
 ```bash
 # checks what is the latest available version on go proxy cache
