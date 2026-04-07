@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ifg</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a1a; color: #e0e0e0; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; padding: 16px; }
+        .header { margin-bottom: 16px; }
+        .header h1 { font-size: 1.5rem; color: #fff; margin-bottom: 4px; }
+        .header p { color: #666; font-size: 0.875rem; }
+        .search-box { margin-bottom: 12px; }
+        .search-input { width: 100%; padding: 12px 16px; font-size: 1rem; background: #252525; border: 2px solid #333; border-radius: 8px; color: #fff; outline: none; }
+        .search-input:focus { border-color: #6366f1; }
+        .entry-list { height: calc(100vh - 140px); overflow-y: auto; }
+        .entry { padding: 12px 14px; margin-bottom: 6px; background: #222; border-radius: 8px; border-left: 3px solid transparent; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+        .entry:hover { background: #2a2a2a; }
+        .entry.selected { border-left-color: #6366f1; background: #252836; }
+        .entry-title { font-weight: 600; color: #e0e0e0; margin-bottom: 4px; font-size: 0.9375rem; }
+        .entry-desc { color: #888; font-size: 0.8125rem; margin-bottom: 6px; white-space: pre-wrap; line-height: 1.4; }
+        .entry-cmd { font-family: 'SF Mono', 'Monaco', 'Menlo', monospace; background: #1a1a1a; padding: 6px 10px; border-radius: 4px; color: #4ade80; font-size: 0.8125rem; overflow-x: auto; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 1000; }
+        .toast.show { opacity: 1; }
+        .empty { text-align: center; padding: 60px 20px; color: #555; }
+        .empty-title { font-size: 1.1rem; }
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            .entry-list { height: calc(100vh - 120px); }
+            .entry { padding: 10px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ifg</h1>
+            <p>search commands, tap to copy</p>
+        </div>
+        <div class="search-box">
+            <input type="text" class="search-input" id="search-input" name="q" placeholder="type to search..." autocomplete="off" autofocus>
+        </div>
+        <div class="entry-list" id="entry-list"></div>
+    </div>
+    <div class="toast" id="toast">copied!</div>
+    <script>
+        let selectedIdx = 0;
+        let entries = [];
+        let debounceTimer;
+        
+        function search(query) {
+            const params = new URLSearchParams();
+            params.set('q', query);
+            params.set('state', JSON.stringify({selectedIdx: selectedIdx, entries: entries}));
+            
+            fetch('/search?' + params.toString())
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('entry-list').innerHTML = html;
+                    const stateInput = document.querySelector('#entry-list input[name="state"]');
+                    if (stateInput) {
+                        try {
+                            const state = JSON.parse(stateInput.value);
+                            selectedIdx = state.selectedIdx || 0;
+                            entries = state.entries || [];
+                        } catch (e) {}
+                    }
+                });
+        }
+        
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                search(e.target.value);
+            }, 150);
+        });
+        
+        search('');
+        
+        function updateSelection() {
+            document.querySelectorAll('.entry').forEach((el, i) => {
+                el.classList.toggle('selected', i === selectedIdx);
+            });
+        }
+        
+        function navigate(dir) {
+            const maxIdx = entries.length - 1;
+            if (dir === 'up' && selectedIdx > 0) selectedIdx--;
+            else if (dir === 'down' && selectedIdx < maxIdx) selectedIdx++;
+            else return;
+            updateSelection();
+            const el = document.querySelector('.entry.selected');
+            if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        
+        function copySelected() {
+            if (!entries[selectedIdx]) return;
+            navigator.clipboard.writeText(entries[selectedIdx].command);
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1200);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); navigate('down'); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); navigate('up'); }
+            else if (e.key === 'Enter') { e.preventDefault(); copySelected(); }
+        });
+        
+        document.addEventListener('click', (e) => {
+            const entry = e.target.closest('.entry');
+            if (entry && entry.dataset.idx !== undefined) {
+                selectedIdx = parseInt(entry.dataset.idx);
+                copySelected();
+            }
+        });
+    </script>
+</body>
+</html>

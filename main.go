@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/gjtiquia/ifg/internal/config"
 	"github.com/gjtiquia/ifg/internal/ui"
+	"github.com/gjtiquia/ifg/internal/web"
 )
 
 //go:embed shell/ifg.sh
@@ -24,6 +26,11 @@ func printHelp() {
 	fmt.Println("## usage:")
 	fmt.Println()
 	fmt.Println("  ifg [flags]")
+	fmt.Println("  ifg web [flags]")
+	fmt.Println()
+	fmt.Println("## commands:")
+	fmt.Println()
+	fmt.Println("  web     start web interface")
 	fmt.Println()
 	fmt.Println("## config dir:")
 	fmt.Println()
@@ -35,6 +42,10 @@ func printHelp() {
 	fmt.Println("  --sh      print shell integration code")
 	fmt.Println("  --bash    alias for --sh")
 	fmt.Println("  --zsh     alias for --sh")
+	fmt.Println()
+	fmt.Println("## web flags:")
+	fmt.Println()
+	fmt.Println("  --port    port for web interface (default: 8080)")
 	fmt.Println()
 	fmt.Println("## shell integration:")
 	fmt.Println()
@@ -64,7 +75,13 @@ func main() {
 
 func run() (string, error) {
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
+		arg := os.Args[1]
+
+		if arg == "web" {
+			return runWeb()
+		}
+
+		switch arg {
 		case "--sh", "--bash", "--zsh":
 			fmt.Print(shellWrapper)
 			return "", nil
@@ -73,7 +90,7 @@ func run() (string, error) {
 			return "", nil
 		default:
 			printHelp()
-			return "", errors.New("unknown flag: " + os.Args[1])
+			return "", errors.New("unknown flag: " + arg)
 		}
 	}
 
@@ -112,6 +129,31 @@ func run() (string, error) {
 	}
 
 	return selectedCommand, nil
+}
+
+func runWeb() (string, error) {
+	port := 8080
+
+	for i := 2; i < len(os.Args); i++ {
+		if os.Args[i] == "--port" && i+1 < len(os.Args) {
+			p, err := strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				return "", fmt.Errorf("invalid port: %s", os.Args[i+1])
+			}
+			port = p
+			break
+		}
+	}
+
+	config.SetDefaultConfig(defaultConfigContent)
+
+	server, err := web.NewServer(port)
+	if err != nil {
+		return "", fmt.Errorf("creating server: %w", err)
+	}
+
+	fmt.Printf("ifg web running at http://localhost:%d\n", port)
+	return "", server.Start()
 }
 
 func runInputLoop(state *ui.State, term *ui.Terminal) string {
