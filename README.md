@@ -1,68 +1,5 @@
 # [i] [f]or[g]ot
 
-for when you are trying to rmb that command
-
-an interactive cli with shell integration support
-
-dead-simple config format with fuzzy search
-
-## installation
-
-```bash
-go install github.com/gjtiquia/ifg@latest
-```
-
-<details>
-    <summary>Command 'ifg' not found</summary>
-
-```bash
-# make sure this is in your .bashrc / .zshrc
-export PATH=$PATH:$HOME/go/bin
-```
-</details>
-
-other useful commands:
-
-```bash
-# checks what is the latest available version on go proxy cache
-go list -m github.com/gjtiquia/ifg@latest
-
-# checks what is the latest version directly from GitHub
-GOPROXY=direct go list -m github.com/gjtiquia/ifg@latest
-
-# installs latest version directly from GitHub
-GOPROXY=direct go install github.com/gjtiquia/ifg@latest
-
-# installs binary at current directory instead of a global install
-GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
-```
-
-### shell integration
-
-```bash
-# add to `~/.bashrc` or `~/.zshrc`
-eval "$(ifg --sh)"
-```
-
-this adds the command to the history instead of just printing it out,
-which is useful as you can access the command by simply pressing UP
-
-## usage
-
-### interactive cli
-
-```bash
-ifg
-
-# then type to fuzzy search
-# select the command with arrrow keys and press enter
-
-# vim keys are supported as well
-# escape and navigate with j/k. enter back to insert mode with i/I/a/A
-```
-
-interactive cli preview:
-
 ```
 ifg - [i] [f]or[g]ot
 
@@ -78,12 +15,92 @@ type to search: magick
 > # like the image size
 > magick identify image.png
 
-  # detailed info
-  magick identify --verbose image.png
-
   # resize
   # can be used for basic image upscaling
   magick input.png -resize 200% output.png
+```
+
+## intro
+
+for when you are trying to rmb that command
+
+curate your own personal library of commands
+
+dead-simple config format with fuzzy search
+
+`fzf`, `telescope.nvim`, `⌘K`, `Ctrl+P` inspired UX
+
+## installation
+
+### go install (recommended)
+
+prerequisite: [Go](https://go.dev/doc/install)
+
+```bash
+go install github.com/gjtiquia/ifg@latest
+```
+
+<details>
+    <summary>Command 'ifg' not found</summary>
+
+```bash
+# make sure this is in your .bashrc / .zshrc
+export PATH=$PATH:$HOME/go/bin
+```
+</details>
+
+<details>
+    <summary>other useful commands:</summary>
+
+```bash
+# checks what is the latest available version on go proxy cache
+go list -m github.com/gjtiquia/ifg@latest
+
+# checks what is the latest version directly from GitHub
+GOPROXY=direct go list -m github.com/gjtiquia/ifg@latest
+
+# installs latest version directly from GitHub
+GOPROXY=direct go install github.com/gjtiquia/ifg@latest
+
+# installs binary at current directory instead of a global install
+GOBIN=$(pwd) go install github.com/gjtiquia/ifg@latest
+```
+</details>
+
+### download binary
+
+skip this if you have downloaded `ifg` via `go install`
+
+```bash
+# TODO
+```
+
+### shell integration
+
+this adds the command to the history instead of just printing it out,
+which is useful as you can access the command by simply pressing UP
+
+```bash
+# for Linux and MacOS:
+# add to your `~/.bashrc` or `~/.zshrc`
+eval "$(ifg --sh)"
+
+# for Windows:
+# TODO
+```
+
+## usage
+
+### interactive cli
+
+```bash
+ifg
+
+# then type to fuzzy search
+# select the command with arrrow keys and press enter
+
+# vim keys are supported as well
+# escape and navigate with j/k. go back to insert mode with i/I/a/A
 ```
 
 ### web server (experimental)
@@ -193,6 +210,27 @@ export PATH="$PWD:$PATH"
 # loads wrapper to current shell
 eval "$(ifg --sh)"
 ```
+
+## ai-usage disclosure
+
+ai is heavily used for generating code in this project
+
+this project aims to build something i need in a short amount of time, but also to
+- explore a viable dev workflow with ai
+- explore [opencode](https://opencode.ai/)
+- explore the capabilities of the GLM 5 model via [opencode go](https://opencode.ai/go) 
+
+some thoughts
+- its not as "fun" as writing by hand, but i have to admit its much faster
+- golang is a really great language to vibecode with
+  - idiomatic go is pretty "standard" over the past decade
+  - stdlib works great for a lot of things
+  - strong typing, compile time errors
+  - dead simple unit testing
+  - these feedback loops increase the quality of code that ai generates
+- cli (or text-based) tools are great for to vibecode for
+  - much more predictable UI design, and easier to enforce a certain style
+  - very easy to do "integration tests" via unit tests
 
 ## license
 
