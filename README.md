@@ -143,6 +143,8 @@ use them for custom ordering.
 
 subdirectories are supported.
 
+feel free to check out [my personal config](https://github.com/gjtiquia/.ifg) for more examples
+
 ### config format
 
 its just bash comments and one-liners. entries are seperated by empty lines
@@ -159,7 +161,7 @@ echo "another command"
 echo "titles and descriptions are overrated"
 ```
 
-check out the default `/shell/config.sh` for a more concrete example
+check out the default [`/shell/config.sh`](./shell/config.sh) for a more concrete example
 
 ## development
 
