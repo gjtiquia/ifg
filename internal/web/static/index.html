@@ -96,10 +96,25 @@
         
         function copySelected() {
             if (!entries[selectedIdx]) return;
-            navigator.clipboard.writeText(entries[selectedIdx].command);
+            copyToClipboard(entries[selectedIdx].command);
             const toast = document.getElementById('toast');
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 1200);
+        }
+        
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
         }
         
         document.addEventListener('keydown', (e) => {
