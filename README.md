@@ -41,7 +41,7 @@ go install github.com/gjtiquia/ifg@latest
 ```
 
 <details>
-    <summary>Command 'ifg' not found</summary>
+    <summary><code>Command 'ifg' not found</code></summary>
 
 ```bash
 # make sure this is in your .bashrc / .zshrc
@@ -198,7 +198,7 @@ go install .
 
 ### testing shell integration
 
-if you do not want to "polute" the global install, you may test it this way
+if you do not want to "pollute" the global install, you may test it this way
 
 ```bash
 # builds binary at project root named `ifg`
@@ -231,6 +231,7 @@ some thoughts
 - cli (or text-based) tools are great for to vibecode for
   - much more predictable UI design, and easier to enforce a certain style
   - very easy to do "integration tests" via unit tests
+- while claude and gpt are amazing, GLM 5 is very much good enough for me
 
 ## license
 
