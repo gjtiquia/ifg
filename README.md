@@ -49,6 +49,8 @@ which is useful as you can access the command by simply pressing UP
 
 ## usage
 
+### interactive cli
+
 ```bash
 ifg
 
@@ -57,6 +59,24 @@ ifg
 
 # vim keys are supported as well
 # escape and navigate with j/k. enter back to insert mode with i/I/a/A
+```
+
+### web server
+
+you can also serve `ifg` on the web,
+accessible via browser or `curl`,
+returning html or plain text respectively,
+its like having a cli cheatsheet readily available whenever you need
+
+```bash
+# serve web server at port 5432
+ifg web --port 5432
+
+# list all entries
+curl -L your-ifg-domain.com
+
+# fuzzy search entry
+curl -L your-ifg-domain.com/your-query
 ```
 
 ## config
