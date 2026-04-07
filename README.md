@@ -20,6 +20,12 @@ type to search: magick
   magick input.png -resize 200% output.png
 ```
 
+## contents
+- [installation](#installation)
+- [usage](#usage)
+- [config](#config)
+- [development](#development)
+
 ## intro
 
 for when you are trying to rmb that command
