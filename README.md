@@ -61,7 +61,32 @@ ifg
 # escape and navigate with j/k. enter back to insert mode with i/I/a/A
 ```
 
-### web server
+interactive cli preview:
+
+```
+ifg - [i] [f]or[g]ot
+
+type to search: magick
+
+---
+
+  # convert from jpg to png
+  # supports many other formats too
+  magick rose.jpg rose.png
+
+> # basic info
+> # like the image size
+> magick identify image.png
+
+  # detailed info
+  magick identify --verbose image.png
+
+  # resize
+  # can be used for basic image upscaling
+  magick input.png -resize 200% output.png
+```
+
+### web server (experimental)
 
 you can also serve `ifg` on the web,
 accessible via browser or `curl`,
@@ -95,8 +120,8 @@ all `*.sh` files in the config directory are read, sorted alphabetically by path
 
 ```
 ~/.ifg/
-├── 01-git.sh
-├── 02-docker.sh
+├── git.sh
+├── docker.sh
 ├── personal/
 │   └── scripts.sh
 └── work/
@@ -123,7 +148,7 @@ echo "another command"
 echo "titles and descriptions are overrated"
 ```
 
-check out the default `config.sh` for a more concrete example
+check out the default `/shell/config.sh` for a more concrete example
 
 ## development
 
